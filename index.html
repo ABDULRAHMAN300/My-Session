@@ -231,6 +231,23 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
 .btn.ghost{background:var(--surface-2);color:var(--ink)}
 .btn.del{background:var(--warn);color:#fff}
 .what{font-size:13.5px;color:var(--ink);background:var(--surface-2);border-radius:11px;padding:11px 12px;margin:12px 0 2px;line-height:1.6}
+.pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.pay-grid>div{background:var(--surface-2);border-radius:10px;padding:8px 6px;text-align:center}
+.pay-grid b{display:block;font-family:var(--font-d);font-size:14.5px;line-height:1.25;font-variant-numeric:tabular-nums}
+.pay-grid span{font-size:10.5px;color:var(--ink-soft)}
+.pay-grid .owed b{color:var(--warn)}
+.pay-grid .clear b{color:var(--chem)}
+.pay-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pay-row label{font-size:11.5px;color:var(--ink-soft);font-family:var(--font-d)}
+.pay-row input{width:84px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;
+  padding:8px 10px;font-family:var(--font-b);font-size:13.5px;font-variant-numeric:tabular-nums;text-align:center}
+.minibtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;
+  font-size:12.5px;font-family:var(--font-d);color:var(--violet)}
+.minibtn.solid{background:var(--grad);color:var(--on-violet);border-color:transparent}
+.paylist{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
+.paylist div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);padding:3px 0}
+.paylist b{font-family:var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums}
+.paylist .x{margin-inline-start:auto;border:0;background:transparent;color:var(--warn);font-size:14px;padding:2px 6px}
 .hint{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.7}
 .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding:12px 14px;background:var(--surface-2);border-radius:var(--r)}
 .legend span{font-size:11.5px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px}
@@ -256,6 +273,8 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
       <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>التقويم</button>
     <button class="tab" data-tab="stu" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>الطلاب</button>
+    <button class="tab" data-tab="pay" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16.5 14.5h1.5"/></svg>الحسابات</button>
     <button class="tab" data-tab="stats" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>الإحصائيات</button>
   </div>
@@ -305,6 +324,27 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
       <button class="btn primary" id="f-save" type="button">حفظ</button>
       <button class="btn ghost" id="f-cancel" type="button">إلغاء</button>
       <button class="btn ghost" id="f-del" type="button" hidden style="flex:1 1 100%;color:var(--warn)">حذف</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="pscrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ptitle" style="max-width:460px">
+    <div class="grab"></div>
+    <h2 id="ptitle">تسجيل دفعة</h2>
+    <p class="sh-sub" id="psub"></p>
+    <div class="field two">
+      <div><label for="p-amount">المبلغ (د.ك)</label><input type="number" id="p-amount" inputmode="decimal" min="0" step="0.5"></div>
+      <div><label for="p-date">التاريخ</label><input type="date" id="p-date"></div>
+    </div>
+    <div class="field">
+      <label for="p-note">ملاحظة (اختياري)</label>
+      <input type="text" id="p-note" placeholder="نقدًا، تحويل…">
+    </div>
+    <p id="p-msg" hidden style="font-size:12.5px;color:var(--warn);margin:0 0 4px"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" id="p-save" type="button">حفظ</button>
+      <button class="btn ghost" id="p-cancel" type="button">إلغاء</button>
     </div>
   </div>
 </div>
@@ -392,6 +432,41 @@ function putLesson(l){
 }
 function delLesson(id){ lessons = lessons.filter(x=>x.id!==id); save(); render(); }
 
+/* ============ الحسابات (محلي) ============ */
+const PAY_LS = "hisas_pay_v1";
+let pay = { price:0, rates:{}, pays:[] };
+function loadPay(){
+  try{
+    const o = JSON.parse(localStorage.getItem(PAY_LS)||"{}");
+    pay = { price:Number(o.price)||0, rates:o.rates||{}, pays:Array.isArray(o.pays)?o.pays:[] };
+  }catch(e){ pay = { price:0, rates:{}, pays:[] }; }
+}
+function savePay(){ try{ localStorage.setItem(PAY_LS, JSON.stringify(pay)); }catch(e){} }
+const rateOf = n => { const r = Number(pay.rates[n]); return r>0 ? r : Number(pay.price)||0; };
+const kd = n => (Math.round((Number(n)||0)*1000)/1000).toFixed(3);
+const firstDate = () => {
+  const ds = lessons.map(l=>l.date).filter(Boolean).sort();
+  return ds.length ? ds[0] : TODAY;
+};
+/* الحصص المنفَّذة حتى اليوم */
+const doneUpToToday = () => expand(firstDate(), TODAY).filter(l=>l.done);
+function payBook(){
+  const done = doneUpToToday();
+  const book = {};
+  const touch = n => (book[n] ||= {n:0, due:0, paid:0, items:[], grade:null, subjs:new Set()});
+  done.forEach(l=>{
+    const n = l.student || "بدون اسم";
+    const b = touch(n); b.n++; b.grade = b.grade || l.grade; b.subjs.add(l.subj);
+  });
+  pay.pays.forEach(p=>{ const b = touch(p.student); b.paid += Number(p.amount)||0; b.items.push(p); });
+  Object.keys(book).forEach(n=>{
+    book[n].due = book[n].n * rateOf(n);
+    book[n].rest = book[n].due - book[n].paid;
+    book[n].items.sort((a,b)=> b.date.localeCompare(a.date));
+  });
+  return book;
+}
+
 /* ============ التكرار ============ */
 const isRep = l => !!(l.rep && l.rep.t && l.rep.t !== "none");
 const HORIZON_BACK = 90, HORIZON_FWD = 400;
@@ -471,6 +546,7 @@ function render(){
   document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===state.tab));
   if(state.tab==="cal") renderCal();
   else if(state.tab==="stu") renderStudents();
+  else if(state.tab==="pay") renderPay();
   else renderStats();
   paintBadge();
   refreshDatalist();
@@ -657,6 +733,89 @@ function renderStudents(){
   wire();
 }
 
+/* ---------- تبويب الحسابات ---------- */
+function renderPay(){
+  const book = payBook();
+  const names = Object.keys(book).sort((a,b)=> book[b].rest - book[a].rest);
+  const mFrom = TODAY.slice(0,8)+"01";
+  const moPaid = pay.pays.filter(p=>p.date>=mFrom && p.date<=TODAY).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const totRest = names.reduce((s,n)=>s+book[n].rest,0);
+  const owing = names.filter(n=>book[n].rest > 0.0005).length;
+  const moDone = doneUpToToday().filter(l=>l.date>=mFrom).length;
+
+  let html = `<div class="tiles">
+    <div class="tile"><div class="v num" style="font-size:22px">${kd(moPaid)}</div><div class="k">محصَّل هذا الشهر (د.ك)</div></div>
+    <div class="tile"><div class="v num" style="font-size:22px;color:${totRest>0.0005?"var(--warn)":"var(--chem)"}">${kd(totRest)}</div><div class="k">إجمالي المتبقي</div></div>
+    <div class="tile"><div class="v num">${moDone}</div><div class="k">حصص منفَّذة هذا الشهر</div></div>
+    <div class="tile"><div class="v num">${owing}</div><div class="k">طلاب عليهم مبالغ</div></div>
+  </div>
+
+  <div class="card">
+    <h3>سعر الحصة الافتراضي</h3>
+    <div class="pay-row">
+      <label for="gprice">د.ك لكل حصة</label>
+      <input type="number" id="gprice" inputmode="decimal" min="0" step="0.5" value="${pay.price}">
+      <span style="font-size:11.5px;color:var(--ink-soft)">يمكن تخصيص سعر مختلف لكل طالب أدناه.</span>
+    </div>
+  </div>`;
+
+  if(!names.length){
+    html += `<div class="card"><p class="empty">لا توجد حسابات بعد.<br>علّم الحصة بعلامة ✓ في التقويم بعد تنفيذها، فتُحتسب هنا تلقائيًا.</p></div>`;
+  }
+
+  names.forEach(n=>{
+    const b = book[n];
+    const g = gradeOf(b.grade);
+    const subjs = [...b.subjs].map(v=>subjOf(v).l).join(" و") || "—";
+    const cleared = b.rest <= 0.0005;
+    html += `<div class="card">
+      <div class="stu-h">
+        <span class="avatar" style="background:${g.c}">${g.s}</span>
+        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subjs}</span></span>
+        <span class="cnt"><b class="num">${b.n}</b><span>منفَّذة</span></span>
+      </div>
+      <div class="pay-grid">
+        <div><b class="num">${kd(b.due)}</b><span>المستحق</span></div>
+        <div><b class="num">${kd(b.paid)}</b><span>المدفوع</span></div>
+        <div class="${cleared?"clear":"owed"}"><b class="num">${kd(b.rest)}</b><span>${cleared?"مسدَّد":"المتبقي"}</span></div>
+      </div>
+      <div class="pay-row">
+        <label for="r-${esc(n)}">سعر حصته</label>
+        <input type="number" id="r-${esc(n)}" data-rate="${esc(n)}" inputmode="decimal" min="0" step="0.5"
+               value="${pay.rates[n]!==undefined?pay.rates[n]:""}" placeholder="${pay.price||0}">
+        <button class="minibtn solid" type="button" data-addpay="${esc(n)}">+ دفعة</button>
+      </div>
+      ${b.items.length?`<div class="paylist">${b.items.slice(0,6).map(p=>`
+        <div><b class="num">${kd(p.amount)}</b><span>${longDate(p.date)}${p.note?" · "+esc(p.note):""}</span>
+        <button class="x" type="button" data-delpay="${p.id}" aria-label="حذف الدفعة">✕</button></div>`).join("")}
+        ${b.items.length>6?`<div><span>وأقدم منها ${b.items.length-6} دفعة.</span></div>`:""}</div>`:""}
+    </div>`;
+  });
+
+  html += `<p class="hint">الحساب مبني على الحصص المعلَّمة كمنفَّذة حتى ${longDate(TODAY)}.<br>النسخة الاحتياطية في تبويب الإحصائيات.</p>`;
+  main.innerHTML = html;
+
+  const gp = document.getElementById("gprice");
+  if(gp) gp.onchange = ()=>{ pay.price = Math.max(0, Number(gp.value)||0); savePay(); render(); };
+  main.querySelectorAll("[data-rate]").forEach(i=>i.onchange=()=>{
+    const n = i.dataset.rate, v = Number(i.value);
+    if(i.value==="" || !(v>0)) delete pay.rates[n]; else pay.rates[n]=v;
+    savePay(); render();
+  });
+  main.querySelectorAll("[data-addpay]").forEach(b=>b.onclick=()=>openPay(b.dataset.addpay));
+  main.querySelectorAll("[data-delpay]").forEach(b=>b.onclick=()=>{
+    const p = pay.pays.find(x=>x.id===b.dataset.delpay); if(!p) return;
+    askConfirm({
+      title:"حذف الدفعة",
+      text:"سيُحذف سجل هذه الدفعة نهائيًا.",
+      what: p.student+" — "+kd(p.amount)+" د.ك · "+longDate(p.date),
+      ok:"حذف",
+      run: ()=>{ pay.pays = pay.pays.filter(x=>x.id!==p.id); savePay(); render(); }
+    });
+  });
+  wire();
+}
+
 /* ---------- تبويب الإحصائيات ---------- */
 function renderStats(){
   const sel = new Date();
@@ -721,9 +880,77 @@ function renderStats(){
   } else html += `<p class="empty" style="padding:4px 0">لا بيانات بعد.</p>`;
   html += `</div>`;
 
+  html += `<div class="card"><h3>النسخة الاحتياطية</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
+      البيانات محفوظة في هذا المتصفح فقط. نزّل نسخة بين حين وآخر، واستوردها عند تغيير الجهاز.</p>
+    <div class="pay-row">
+      <button class="minibtn solid" type="button" id="bk-save">تنزيل نسخة</button>
+      <button class="minibtn" type="button" id="bk-load">استيراد من ملف</button>
+      <input type="file" id="bk-file" accept="application/json,.json" hidden>
+    </div>
+    <p id="bk-msg" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0"></p>
+  </div>`;
+
   html += `<p class="hint">إجمالي البنود المسجَّلة: <b class="num">${lessons.length}</b>${lessons.filter(isRep).length?` — منها <b class="num">${lessons.filter(isRep).length}</b> متكرّرة`:""}</p>`;
   main.innerHTML = html;
+  wireBackup();
   wire();
+}
+
+/* ---------- التصدير والاستيراد ---------- */
+function backupBlob(){
+  return JSON.stringify({ app:"hisas", v:1, at:new Date().toISOString(), lessons, pay }, null, 1);
+}
+function wireBackup(){
+  const msg = document.getElementById("bk-msg");
+  const file = document.getElementById("bk-file");
+  const sv = document.getElementById("bk-save");
+  const ld = document.getElementById("bk-load");
+  if(!sv) return;
+
+  sv.onclick = ()=>{
+    try{
+      const blob = new Blob([backupBlob()], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "hisas-" + TODAY + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      msg.textContent = "تم تجهيز الملف. احفظه في «الملفات» أو iCloud.";
+    }catch(e){ msg.textContent = "تعذّر التنزيل في هذا المتصفح."; }
+  };
+
+  ld.onclick = ()=>file.click();
+  file.onchange = ()=>{
+    const f = file.files && file.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      let data;
+      try{ data = JSON.parse(r.result); }catch(e){ msg.textContent = "الملف غير صالح."; return; }
+      const inc = Array.isArray(data) ? data : data.lessons;
+      if(!Array.isArray(inc)){ msg.textContent = "الملف لا يحتوي حصصًا."; return; }
+
+      const have = new Set(lessons.map(l=>l.id));
+      const added = inc.filter(l=>l && l.id && !have.has(l.id));
+      lessons = lessons.concat(added);
+      save();
+
+      let addedPays = 0;
+      if(data.pay){
+        if(!pay.price && Number(data.pay.price)) pay.price = Number(data.pay.price);
+        Object.keys(data.pay.rates||{}).forEach(k=>{ if(pay.rates[k]===undefined) pay.rates[k]=data.pay.rates[k]; });
+        const hp = new Set(pay.pays.map(x=>x.id));
+        (data.pay.pays||[]).forEach(x=>{ if(x && x.id && !hp.has(x.id)){ pay.pays.push(x); addedPays++; } });
+        savePay();
+      }
+      msg.textContent = "تم استيراد " + added.length + " حصة و" + addedPays + " دفعة.";
+      file.value = "";
+      render();
+    };
+    r.readAsText(f);
+  };
 }
 
 function wire(){
@@ -742,6 +969,35 @@ function wire(){
     } else putLesson(Object.assign({},l,{done:!l.done}));
   });
 }
+
+/* ============ نافذة الدفعة ============ */
+const pscrim = document.getElementById("pscrim");
+let payFor = null;
+function openPay(name){
+  payFor = name;
+  document.getElementById("psub").textContent = name;
+  document.getElementById("p-amount").value = "";
+  document.getElementById("p-date").value = TODAY;
+  document.getElementById("p-note").value = "";
+  document.getElementById("p-msg").hidden = true;
+  pscrim.hidden = false;
+  setTimeout(()=>document.getElementById("p-amount").focus(), 60);
+}
+function closePay(){ pscrim.hidden = true; payFor = null; }
+document.getElementById("p-cancel").onclick = closePay;
+pscrim.onclick = e => { if(e.target===pscrim) closePay(); };
+document.getElementById("p-save").onclick = ()=>{
+  const amt = Number(document.getElementById("p-amount").value);
+  const date = document.getElementById("p-date").value || TODAY;
+  const msg = document.getElementById("p-msg");
+  if(!(amt>0)){ msg.textContent = "أدخل مبلغًا أكبر من صفر."; msg.hidden = false; return; }
+  pay.pays.push({
+    id: "p"+Date.now()+Math.floor(Math.random()*1000),
+    student: payFor, amount: amt, date,
+    note: document.getElementById("p-note").value.trim()
+  });
+  savePay(); closePay(); render();
+};
 
 /* ============ نافذة التأكيد ============ */
 const cscrim = document.getElementById("cscrim");
@@ -904,6 +1160,7 @@ document.getElementById("themebtn").onclick = ()=>{
 try{ const th=localStorage.getItem("hisas_theme"); if(th) document.documentElement.setAttribute("data-theme",th); }catch(e){}
 
 load();
+loadPay();
 render();
 </script>
 
