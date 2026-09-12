@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1668E3">
+<meta name="description" content="جدول الحصص الخارجية — المواعيد والتكرار وكشف تعارض الأوقات.">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="الحصص">
+<style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>جدول الحصص الخارجية</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --violet:#7B2FF7;
+  --rose:#FF4D9D;
+  --bg:#FBF7FF;
+  --surface:#FFFFFF;
+  --surface-2:#F0E8FF;
+  --ink:#2A2138;
+  --ink-soft:#6E6285;
+  --line:#E4D8FA;
+  --line-soft:#F0E9FB;
+  --phys:#1668E3;
+  --chem:#06A94D;
+  --g10:#F2760B;
+  --g11:#E5184C;
+  --g12:#7B2FF7;
+  --warn:#E5184C;
+  --on-violet:#FFFFFF;
+  --grad:linear-gradient(135deg,#7B2FF7 0%,#B32FE0 55%,#FF4D9D 100%);
+  --shadow:0 1px 2px rgba(90,40,160,.06), 0 8px 24px rgba(90,40,160,.09);
+  --shadow-lift:0 8px 34px rgba(70,20,140,.26);
+  --r:14px;
+  --font-d:"Noto Kufi Arabic",system-ui,sans-serif;
+  --font-b:"Noto Sans Arabic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --violet:#B98BFF; --rose:#FF7DBB;
+    --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
+    --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
+    --phys:#5FA8FF; --chem:#3EDC8A;
+    --g10:#FFA24D; --g11:#FF6B8E; --g12:#B98BFF;
+    --warn:#FF6B8E; --on-violet:#180F2B;
+    --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
+    --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
+    --shadow-lift:0 8px 34px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --violet:#B98BFF; --rose:#FF7DBB;
+  --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
+  --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
+  --phys:#5FA8FF; --chem:#3EDC8A;
+  --g10:#FFA24D; --g11:#FF6B8E; --g12:#B98BFF;
+  --warn:#FF6B8E; --on-violet:#180F2B;
+  --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
+  --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
+  --shadow-lift:0 8px 34px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-b);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+h1,h2,h3{font-family:var(--font-d);font-weight:600;text-wrap:balance;margin:0}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+#shell{max-width:560px;margin:0 auto;padding:0 16px 96px;min-height:100vh}
+
+.appbar{position:sticky;top:0;z-index:30;background:var(--bg);padding-block:14px 10px;
+  border-bottom:1px solid var(--line-soft);margin-inline:-16px;padding-inline:16px}
+.appbar-row{display:flex;align-items:center;gap:12px}
+.brand{flex:1;min-width:0}
+.brand h1{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand span{font-size:11.5px;color:var(--ink-soft)}
+.themebtn{flex-shrink:0;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+  background:var(--surface);display:grid;place-items:center;font-size:15px}
+
+.monthnav{display:flex;align-items:center;gap:8px;margin-top:12px}
+.navbtn{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;color:var(--violet);font-size:16px;line-height:1}
+.navbtn:disabled{opacity:.32;cursor:default}
+.monthlabel{flex:1;text-align:center;font-family:var(--font-d);font-weight:600;font-size:16px}
+.monthlabel small{display:block;font-size:11px;font-weight:400;color:var(--ink-soft);font-family:var(--font-b)}
+.seg{display:flex;background:var(--surface-2);border-radius:11px;padding:3px;gap:3px;margin-top:12px}
+.seg button{flex:1;border:0;background:transparent;border-radius:8px;padding:7px 0;font-size:13px;
+  font-family:var(--font-d);color:var(--ink-soft)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--violet);box-shadow:var(--shadow)}
+
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:14px}
+.wkh{font-size:10.5px;color:var(--ink-soft);text-align:center;font-family:var(--font-d);padding-bottom:2px}
+.wkh.off{color:var(--rose)}
+.cell{position:relative;aspect-ratio:1/1.06;border-radius:10px;border:1px solid transparent;background:var(--surface);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:2px;min-width:0}
+.cell.blank{background:transparent}
+.cell.off{background:var(--surface-2)}
+.cell .d{font-size:14px;font-weight:500;line-height:1}
+.cell.today{box-shadow:inset 0 0 0 1.5px var(--violet)}
+.cell.today .d{color:var(--violet);font-weight:700}
+.cell.sel{background:var(--grad);border-color:transparent;box-shadow:0 4px 14px color-mix(in srgb,var(--violet) 42%,transparent)}
+.cell.sel .d{color:var(--on-violet)}
+.dots{display:flex;gap:2.5px;height:5px;align-items:center}
+.dots i{width:4.5px;height:4.5px;border-radius:50%;display:block}
+.cell.sel .dots i{background:var(--on-violet)!important;opacity:.85}
+.cell .clash{position:absolute;inset-block-start:3px;inset-inline-end:4px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+
+.panel{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden}
+.panel-head{display:flex;align-items:flex-start;gap:10px;padding:14px 14px 12px;border-bottom:1px solid var(--line-soft)}
+.panel-head .dt{flex:1;min-width:0}
+.panel-head h3{font-size:15px}
+.panel-head .sub{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+.addbtn{flex-shrink:0;border:0;background:var(--grad);color:var(--on-violet);border-radius:10px;padding:8px 13px;
+  font-size:12.5px;font-family:var(--font-d);font-weight:600;box-shadow:0 3px 12px color-mix(in srgb,var(--violet) 38%,transparent)}
+.panel-body{padding:10px 14px 14px}
+
+.les{display:flex;gap:11px;align-items:flex-start;padding:11px 0}
+.les+.les{border-top:1px solid var(--line-soft)}
+.les .time{flex-shrink:0;width:52px;text-align:center;font-family:var(--font-d);line-height:1.35}
+.les .time b{display:block;font-size:14px;font-weight:700}
+.les .time span{display:block;font-size:10.5px;color:var(--ink-soft)}
+.les .bar{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;min-height:34px}
+.les .body{flex:1;min-width:0}
+.les .who{font-size:14.5px;font-weight:600;font-family:var(--font-d);line-height:1.45;word-wrap:break-word}
+.les.done .who{text-decoration:line-through;color:var(--ink-soft)}
+.les .note{font-size:12.5px;color:var(--ink-soft);margin-top:3px;word-wrap:break-word}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+.pill{font-size:10.5px;font-family:var(--font-d);padding:2.5px 8px;border-radius:999px;
+  background:var(--surface-2);color:var(--ink-soft);display:inline-flex;align-items:center;gap:4px}
+.pill i{width:6px;height:6px;border-radius:50%;display:block}
+.pill.rep{background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet)}
+.pill.clash{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.acts{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+.chk{width:22px;height:22px;border-radius:7px;border:1.8px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;font-size:12px;color:transparent}
+.chk[aria-checked="true"]{background:var(--grad);border-color:transparent;color:var(--on-violet)}
+.iconbtn{border:0;background:transparent;color:var(--ink-soft);padding:4px;border-radius:8px;line-height:0;display:grid;place-items:center}
+.empty{font-size:13px;color:var(--ink-soft);text-align:center;padding:14px 8px;line-height:1.7}
+
+.warnbox{display:flex;gap:9px;align-items:center;background:color-mix(in srgb,var(--warn) 10%,transparent);
+  border:1px solid color-mix(in srgb,var(--warn) 32%,transparent);border-radius:11px;padding:9px 11px;
+  margin:0 0 10px;font-size:12.5px;color:var(--warn);line-height:1.5}
+
+.daycard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  padding:12px 14px;margin-top:10px}
+.daycard.is-today{border-color:var(--violet)}
+.daycard-h{display:flex;align-items:center;gap:9px;margin-bottom:2px}
+.daycard-h .dn{font-family:var(--font-d);font-weight:700;font-size:19px;color:var(--violet);line-height:1}
+.daycard-h .dw{font-size:12.5px;color:var(--ink-soft);flex:1}
+.daycard-h .mini{border:0;background:var(--surface-2);border-radius:9px;padding:5px 10px;font-size:11.5px;
+  font-family:var(--font-d);color:var(--violet)}
+
+.chips{display:flex;gap:6px;overflow-x:auto;padding-block:2px 4px;margin-top:12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;
+  font-size:12px;font-family:var(--font-d);color:var(--ink-soft);display:inline-flex;align-items:center;gap:6px}
+.chip i{width:7px;height:7px;border-radius:50%;display:block}
+.chip[aria-pressed="true"]{background:var(--grad);border-color:transparent;color:var(--on-violet)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-top:12px}
+.card h3{font-size:14px;margin-bottom:10px}
+.stu-h{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.avatar{flex-shrink:0;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;
+  font-family:var(--font-d);font-weight:700;font-size:15px;color:var(--on-violet)}
+.stu-h .who{flex:1;min-width:0}
+.stu-h .who b{display:block;font-family:var(--font-d);font-size:14.5px;line-height:1.4}
+.stu-h .who span{font-size:11.5px;color:var(--ink-soft)}
+.stu-h .cnt{flex-shrink:0;text-align:center;font-family:var(--font-d)}
+.stu-h .cnt b{display:block;font-size:18px;color:var(--violet);line-height:1}
+.stu-h .cnt span{font-size:10px;color:var(--ink-soft)}
+.nextline{font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line-soft);padding-top:9px}
+.nextline b{color:var(--ink);font-family:var(--font-d)}
+
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;box-shadow:var(--shadow)}
+.tile .v{font-family:var(--font-d);font-weight:700;font-size:26px;line-height:1.1;color:var(--violet)}
+.tile .k{font-size:11.5px;color:var(--ink-soft);margin-top:4px}
+.bar-row{margin-bottom:11px}
+.bar-row:last-child{margin-bottom:0}
+.bar-row .l{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;gap:8px}
+.bar-row .l b{font-family:var(--font-d);font-weight:600}
+.track{height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.fill{height:100%;border-radius:4px;transition:width .4s ease}
+
+.tabs{position:fixed;inset-inline:0;bottom:0;z-index:40;background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;padding:7px 12px calc(7px + env(safe-area-inset-bottom))}
+.tabs-in{max-width:560px;margin:0 auto;display:flex;width:100%;gap:4px}
+.tab{flex:1;border:0;background:transparent;border-radius:11px;padding:7px 0 6px;display:flex;flex-direction:column;
+  align-items:center;gap:3px;font-size:10.5px;font-family:var(--font-d);color:var(--ink-soft);position:relative}
+.tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--violet);background:var(--surface-2)}
+.tab .badge{position:absolute;inset-block-start:1px;inset-inline-end:calc(50% - 24px);min-width:17px;height:17px;
+  padding:0 4px;border-radius:9px;background:var(--violet);color:var(--on-violet);font-size:10px;
+  font-family:var(--font-d);font-weight:700;display:grid;place-items:center;line-height:1}
+
+.scrim{position:fixed;inset:0;z-index:50;background:rgba(30,22,42,.45);backdrop-filter:blur(2px);display:grid;align-items:end;justify-items:center}
+.scrim[hidden]{display:none!important}
+.sheet{width:100%;max-width:560px;background:var(--surface);border-radius:20px 20px 0 0;box-shadow:var(--shadow-lift);
+  padding:8px 16px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;animation:up .22s ease}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}.fill{transition:none}}
+.grab{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+.sheet h2{font-size:16px;margin-bottom:3px;color:var(--violet)}
+.sheet .sh-sub{font-size:12px;color:var(--ink-soft);margin-bottom:14px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12px;font-family:var(--font-d);color:var(--ink-soft);margin-bottom:6px}
+.field input,.field textarea{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:11px;padding:11px 12px;font-family:var(--font-b);font-size:14.5px}
+.field textarea{resize:vertical;min-height:56px}
+.two{display:flex;gap:10px}
+.two>div{flex:1}
+input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 13px;font-size:12.5px;
+  font-family:var(--font-d);color:var(--ink-soft);display:inline-flex;align-items:center;gap:6px}
+.opt i{width:8px;height:8px;border-radius:50%;display:block}
+.opt[aria-pressed="true"]{border-color:var(--violet);background:color-mix(in srgb,var(--violet) 10%,transparent);color:var(--violet)}
+.dayrow{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.dayrow .opt{padding:7px 0;min-width:40px;justify-content:center;flex:1}
+.sublabel{font-size:11.5px;font-family:var(--font-d);color:var(--ink-soft);margin:10px 0 5px;display:block}
+.sheet-actions{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
+.btn{flex:1;border:0;border-radius:12px;padding:13px 0;font-family:var(--font-d);font-size:14px;font-weight:600}
+.btn.primary{background:var(--grad);color:var(--on-violet);box-shadow:0 4px 16px color-mix(in srgb,var(--violet) 40%,transparent)}
+.btn.ghost{background:var(--surface-2);color:var(--ink)}
+.btn.del{background:var(--warn);color:#fff}
+.what{font-size:13.5px;color:var(--ink);background:var(--surface-2);border-radius:11px;padding:11px 12px;margin:12px 0 2px;line-height:1.6}
+.pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.pay-grid>div{background:var(--surface-2);border-radius:10px;padding:8px 6px;text-align:center}
+.pay-grid b{display:block;font-family:var(--font-d);font-size:14.5px;line-height:1.25;font-variant-numeric:tabular-nums}
+.pay-grid span{font-size:10.5px;color:var(--ink-soft)}
+.pay-grid .owed b{color:var(--warn)}
+.pay-grid .clear b{color:var(--chem)}
+.pay-row{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pay-row label{font-size:11.5px;color:var(--ink-soft);font-family:var(--font-d)}
+.pay-row input{width:84px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;
+  padding:8px 10px;font-family:var(--font-b);font-size:13.5px;font-variant-numeric:tabular-nums;text-align:center}
+.minibtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;
+  font-size:12.5px;font-family:var(--font-d);color:var(--violet)}
+.minibtn.solid{background:var(--grad);color:var(--on-violet);border-color:transparent}
+.paylist{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
+.paylist div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);padding:3px 0}
+.paylist b{font-family:var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums}
+.paylist .x{margin-inline-start:auto;border:0;background:transparent;color:var(--warn);font-size:14px;padding:2px 6px}
+.hint{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.7}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding:12px 14px;background:var(--surface-2);border-radius:var(--r)}
+.legend span{font-size:11.5px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px}
+.legend i{width:8px;height:8px;border-radius:50%;display:block}
+</style>
+
+<div id="shell">
+  <header class="appbar">
+    <div class="appbar-row">
+      <div class="brand">
+        <h1>جدول الحصص الخارجية</h1>
+        <span id="todayline"></span>
+      </div>
+      <button class="themebtn" id="themebtn" type="button" aria-label="تبديل الوضع الليلي">◐</button>
+    </div>
+  </header>
+  <main id="main"></main>
+</div>
+
+<nav class="tabs">
+  <div class="tabs-in">
+    <button class="tab" data-tab="cal" aria-selected="true" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>التقويم</button>
+    <button class="tab" data-tab="stu" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>الطلاب</button>
+    <button class="tab" data-tab="pay" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16.5 14.5h1.5"/></svg>الحسابات</button>
+    <button class="tab" data-tab="stats" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>الإحصائيات</button>
+  </div>
+</nav>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheettitle">
+    <div class="grab"></div>
+    <h2 id="sheettitle">حصة جديدة</h2>
+    <p class="sh-sub" id="sheetsub"></p>
+    <div class="field">
+      <label for="f-student">اسم الطالب</label>
+      <input type="text" id="f-student" list="studentlist" placeholder="مثال: عبدالله الخالدي" autocomplete="off">
+      <datalist id="studentlist"></datalist>
+    </div>
+    <div class="field">
+      <label for="f-grade">الصف</label>
+      <div class="opts" id="f-grade"></div>
+    </div>
+    <div class="field">
+      <label for="f-subj">المادة</label>
+      <div class="opts" id="f-subj"></div>
+    </div>
+    <div class="field">
+      <label for="f-date">التاريخ</label>
+      <input type="date" id="f-date">
+    </div>
+    <div class="field two">
+      <div><label for="f-from">من الساعة</label><input type="time" id="f-from" value="16:00" step="300"></div>
+      <div><label for="f-to">إلى الساعة</label><input type="time" id="f-to" value="17:30" step="300"></div>
+    </div>
+    <div class="field">
+      <label for="f-rep">التكرار</label>
+      <div class="opts" id="f-rep"></div>
+      <div class="dayrow" id="f-rep-days" hidden></div>
+      <div id="f-rep-until" hidden>
+        <label class="sublabel" for="f-until">يتوقف بعد تاريخ (اختياري)</label>
+        <input type="date" id="f-until">
+      </div>
+    </div>
+    <div class="field">
+      <label for="f-note">ملاحظة (اختياري)</label>
+      <textarea id="f-note" placeholder="الموضوع، المكان، رقم ولي الأمر…"></textarea>
+    </div>
+    <p id="f-msg" hidden style="font-size:12.5px;color:var(--warn);margin:0 0 4px;line-height:1.6"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" id="f-save" type="button">حفظ</button>
+      <button class="btn ghost" id="f-cancel" type="button">إلغاء</button>
+      <button class="btn ghost" id="f-del" type="button" hidden style="flex:1 1 100%;color:var(--warn)">حذف</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="pscrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ptitle" style="max-width:460px">
+    <div class="grab"></div>
+    <h2 id="ptitle">تسجيل دفعة</h2>
+    <p class="sh-sub" id="psub"></p>
+    <div class="field two">
+      <div><label for="p-amount">المبلغ (د.ك)</label><input type="number" id="p-amount" inputmode="decimal" min="0" step="0.5"></div>
+      <div><label for="p-date">التاريخ</label><input type="date" id="p-date"></div>
+    </div>
+    <div class="field">
+      <label for="p-note">ملاحظة (اختياري)</label>
+      <input type="text" id="p-note" placeholder="نقدًا، تحويل…">
+    </div>
+    <p id="p-msg" hidden style="font-size:12.5px;color:var(--warn);margin:0 0 4px"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" id="p-save" type="button">حفظ</button>
+      <button class="btn ghost" id="p-cancel" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="cscrim" hidden>
+  <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="ctitle" style="max-width:420px">
+    <div class="grab"></div>
+    <h2 id="ctitle">حذف</h2>
+    <p id="ctext" style="font-size:13.5px;color:var(--ink-soft);line-height:1.7;margin:0"></p>
+    <div class="what" id="cwhat"></div>
+    <div class="sheet-actions">
+      <button class="btn del" id="c-ok" type="button">حذف</button>
+      <button class="btn ghost" id="c-ok2" type="button" hidden style="flex:1 1 100%"></button>
+      <button class="btn ghost" id="c-no" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.documentElement.dir = "rtl";
+document.documentElement.lang = "ar";
+
+/* ============ ثوابت ============ */
+const GRADES = [
+  {v:"10", l:"الصف العاشر",       s:"١٠", c:"var(--g10)"},
+  {v:"11", l:"الحادي عشر",        s:"١١", c:"var(--g11)"},
+  {v:"12", l:"الثاني عشر",        s:"١٢", c:"var(--g12)"}
+];
+const SUBJECTS = [
+  {v:"phys", l:"فيزياء",  c:"var(--phys)"},
+  {v:"chem", l:"كيمياء",  c:"var(--chem)"}
+];
+const REPEATS = [
+  {v:"none",    l:"بدون تكرار"},
+  {v:"weekly",  l:"أسبوعي"},
+  {v:"daily",   l:"يومي"},
+  {v:"monthly", l:"شهري"}
+];
+const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+const DAYS   = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const DAYS_S = ["أحد","اثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"];
+const MIN_M = 2026*12+0, MAX_M = 2028*12+11;
+
+const gradeOf = v => GRADES.find(g=>g.v===v) || GRADES[0];
+const subjOf  = v => SUBJECTS.find(s=>s.v===v) || SUBJECTS[0];
+
+/* ============ أدوات ============ */
+const pad = n => String(n).padStart(2,"0");
+const key = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const TODAY = key(new Date());
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const mins = t => { const [h,m]=(t||"0:0").split(":").map(Number); return h*60+m; };
+const fmtT = t => { const [h,m]=(t||"0:0").split(":").map(Number);
+  const ap = h<12 ? "ص" : "م"; const hh = h%12===0 ? 12 : h%12;
+  return hh + ":" + pad(m) + " " + ap; };
+const durOf = l => Math.max(0, mins(l.to) - mins(l.from));
+const durLabel = m => {
+  const h = Math.floor(m/60), r = m%60;
+  const hw = h===1 ? "ساعة" : h===2 ? "ساعتان" : (h>=3 && h<=10) ? h+" ساعات" : h+" ساعة";
+  const rw = r===1 ? "دقيقة" : r===2 ? "دقيقتان" : (r>=3 && r<=10) ? r+" دقائق" : r+" دقيقة";
+  if(h && r) return hw + " و" + rw;
+  if(h) return hw;
+  return rw;
+};
+const durShort = m => {
+  const h = Math.floor(m/60), r = m%60;
+  return (h ? h+" س" : "") + (h && r ? " " : "") + (r ? r+" د" : "");
+};
+function longDate(s){
+  const d = parse(s);
+  return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
+}
+
+/* ============ التخزين (محلي) ============ */
+const LS = "hisas_v1";
+let lessons = [];
+function load(){ try{ lessons = JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ lessons=[]; } }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} }
+function putLesson(l){
+  const i = lessons.findIndex(x=>x.id===l.id);
+  if(i>=0) lessons[i]=l; else lessons.push(l);
+  save(); render();
+}
+function delLesson(id){ lessons = lessons.filter(x=>x.id!==id); save(); render(); }
+
+/* ============ الحسابات (محلي) ============ */
+const PAY_LS = "hisas_pay_v1";
+let pay = { price:0, rates:{}, pays:[] };
+function loadPay(){
+  try{
+    const o = JSON.parse(localStorage.getItem(PAY_LS)||"{}");
+    pay = { price:Number(o.price)||0, rates:o.rates||{}, pays:Array.isArray(o.pays)?o.pays:[] };
+  }catch(e){ pay = { price:0, rates:{}, pays:[] }; }
+}
+function savePay(){ try{ localStorage.setItem(PAY_LS, JSON.stringify(pay)); }catch(e){} }
+const rateOf = n => { const r = Number(pay.rates[n]); return r>0 ? r : Number(pay.price)||0; };
+const kd = n => (Math.round((Number(n)||0)*1000)/1000).toFixed(3);
+const firstDate = () => {
+  const ds = lessons.map(l=>l.date).filter(Boolean).sort();
+  return ds.length ? ds[0] : TODAY;
+};
+/* الحصص المنفَّذة حتى اليوم */
+const doneUpToToday = () => expand(firstDate(), TODAY).filter(l=>l.done);
+function payBook(){
+  const done = doneUpToToday();
+  const book = {};
+  const touch = n => (book[n] ||= {n:0, due:0, paid:0, items:[], grade:null, subjs:new Set()});
+  done.forEach(l=>{
+    const n = l.student || "بدون اسم";
+    const b = touch(n); b.n++; b.grade = b.grade || l.grade; b.subjs.add(l.subj);
+  });
+  pay.pays.forEach(p=>{ const b = touch(p.student); b.paid += Number(p.amount)||0; b.items.push(p); });
+  Object.keys(book).forEach(n=>{
+    book[n].due = book[n].n * rateOf(n);
+    book[n].rest = book[n].due - book[n].paid;
+    book[n].items.sort((a,b)=> b.date.localeCompare(a.date));
+  });
+  return book;
+}
+
+/* ============ التكرار ============ */
+const isRep = l => !!(l.rep && l.rep.t && l.rep.t !== "none");
+const HORIZON_BACK = 90, HORIZON_FWD = 400;
+
+function repLabel(l){
+  if(!isRep(l)) return "";
+  const r = l.rep;
+  if(r.t==="weekly")  return "أسبوعي · " + (r.d||[]).slice().sort().map(i=>DAYS_S[i]).join("، ");
+  if(r.t==="daily")   return "يومي";
+  if(r.t==="monthly") return "شهري · يوم " + parse(l.date).getDate();
+  return "";
+}
+function hits(l, ds){
+  if(!isRep(l)) return l.date === ds;
+  const r = l.rep;
+  if(ds < l.date) return false;
+  if(r.until && ds > r.until) return false;
+  if((l.skip||[]).includes(ds)) return false;
+  const d = parse(ds);
+  if(r.t==="daily")  return true;
+  if(r.t==="weekly") return (r.d||[]).includes(d.getDay());
+  if(r.t==="monthly"){
+    const anchor = parse(l.date).getDate();
+    const dim = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    return d.getDate() === Math.min(anchor, dim);
+  }
+  return false;
+}
+const occDone = (l, ds) => isRep(l) ? !!(l.doneOn||{})[ds] : !!l.done;
+const occOf = (l, ds) => Object.assign({}, l, {date:ds, done:occDone(l,ds), _rep:isRep(l)});
+
+function lessonsOn(ds){
+  return lessons.filter(l=>hits(l,ds)).map(l=>occOf(l,ds))
+    .sort((a,b)=> mins(a.from)-mins(b.from) || (a.ts||0)-(b.ts||0));
+}
+function expand(from, to){
+  const out = [];
+  lessons.forEach(l=>{
+    if(!isRep(l)){ if(l.date>=from && l.date<=to) out.push(occOf(l,l.date)); return; }
+    const start = l.date > from ? l.date : from;
+    const stop  = (l.rep.until && l.rep.until < to) ? l.rep.until : to;
+    if(start > stop) return;
+    for(let d = parse(start); key(d) <= stop; d = addDays(d,1)){
+      const ds = key(d);
+      if(hits(l, ds)) out.push(occOf(l, ds));
+    }
+  });
+  return out.sort((a,b)=> a.date.localeCompare(b.date) || mins(a.from)-mins(b.from));
+}
+const winFrom = () => key(addDays(new Date(), -HORIZON_BACK));
+const winTo   = () => key(addDays(new Date(),  HORIZON_FWD));
+
+/* تعارض المواعيد داخل اليوم */
+function clashSet(list){
+  const bad = new Set();
+  for(let i=0;i<list.length;i++)
+    for(let j=i+1;j<list.length;j++){
+      const a=list[i], b=list[j];
+      if(mins(a.from) < mins(b.to) && mins(b.from) < mins(a.to)){ bad.add(a.id+"|"+a.date); bad.add(b.id+"|"+b.date); }
+    }
+  return bad;
+}
+
+/* ============ الحالة ============ */
+const state = {
+  tab:"cal", mode:"month",
+  cur:{y:new Date().getFullYear(), m:new Date().getMonth()},
+  sel:TODAY, editing:null, occDate:null,
+  stuFilter:"all", subjFilter:"all"
+};
+
+/* ============ الرسم ============ */
+const main = document.getElementById("main");
+
+function render(){
+  document.getElementById("todayline").textContent = "اليوم: " + longDate(TODAY);
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===state.tab));
+  if(state.tab==="cal") renderCal();
+  else if(state.tab==="stu") renderStudents();
+  else if(state.tab==="pay") renderPay();
+  else renderStats();
+  paintBadge();
+  refreshDatalist();
+}
+function paintBadge(){
+  const n = lessonsOn(TODAY).filter(l=>!l.done).length;
+  document.querySelectorAll(".tab").forEach(b=>{
+    const old=b.querySelector(".badge"); if(old) old.remove();
+    if(b.dataset.tab==="cal" && n>0){
+      const s=document.createElement("span"); s.className="badge num"; s.textContent=n; b.appendChild(s);
+    }
+  });
+}
+function refreshDatalist(){
+  const names = [...new Set(lessons.map(l=>l.student).filter(Boolean))].sort();
+  document.getElementById("studentlist").innerHTML = names.map(n=>`<option value="${esc(n)}"></option>`).join("");
+}
+
+function monthNav(){
+  const idx = state.cur.y*12+state.cur.m;
+  const from = state.cur.y+"-"+pad(state.cur.m+1)+"-01";
+  const to   = state.cur.y+"-"+pad(state.cur.m+1)+"-"+pad(new Date(state.cur.y,state.cur.m+1,0).getDate());
+  const n = expand(from,to).length;
+  return `<div class="monthnav">
+    <button class="navbtn" id="prevm" type="button" ${idx<=MIN_M?"disabled":""} aria-label="الشهر السابق">›</button>
+    <div class="monthlabel">${MONTHS[state.cur.m]} <span class="num">${state.cur.y}</span>
+      <small>${n?`<span class="num">${n}</span> حصة هذا الشهر`:"لا حصص هذا الشهر"}</small></div>
+    <button class="navbtn" id="nextm" type="button" ${idx>=MAX_M?"disabled":""} aria-label="الشهر التالي">‹</button>
+  </div>
+  <div class="seg" role="group">
+    <button type="button" data-mode="month" aria-pressed="${state.mode==="month"}">عرض شهري</button>
+    <button type="button" data-mode="week" aria-pressed="${state.mode==="week"}">عرض أسبوعي</button>
+  </div>`;
+}
+
+function lessonRow(l, clashes){
+  const g = gradeOf(l.grade), sb = subjOf(l.subj);
+  const isClash = clashes && clashes.has(l.id+"|"+l.date);
+  return `<div class="les${l.done?" done":""}">
+    <span class="time num"><b>${fmtT(l.from)}</b><span>${fmtT(l.to)}</span></span>
+    <span class="bar" style="background:${sb.c}"></span>
+    <span class="body">
+      <span class="who">${esc(l.student||"بدون اسم")}</span>
+      ${l.note?`<span class="note">${esc(l.note)}</span>`:""}
+      <span class="meta">
+        <span class="pill" style="background:color-mix(in srgb,${sb.c} 15%,transparent);color:${sb.c}"><i style="background:${sb.c}"></i>${sb.l}</span>
+        <span class="pill" style="background:color-mix(in srgb,${g.c} 15%,transparent);color:${g.c}">${g.l}</span>
+        <span class="pill">${durShort(durOf(l))}</span>
+        ${l._rep?`<span class="pill rep">↻ ${esc(repLabel(l))}</span>`:""}
+        ${isClash?`<span class="pill clash">تعارض</span>`:""}
+      </span>
+    </span>
+    <span class="acts">
+      <button class="chk" type="button" role="checkbox" aria-checked="${l.done?"true":"false"}" data-toggle="${l.id}|${l.date}" aria-label="تمّت الحصة">✓</button>
+      <button class="iconbtn" type="button" data-edit="${l.id}|${l.date}" aria-label="تعديل">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
+      </button>
+    </span>
+  </div>`;
+}
+
+function dayPanel(ds){
+  const list = lessonsOn(ds), clashes = clashSet(list);
+  const total = list.reduce((s,l)=>s+durOf(l),0);
+  return `<section class="panel">
+    <div class="panel-head">
+      <div class="dt">
+        <h3>${longDate(ds)}</h3>
+        <div class="sub">${list.length?`<span class="num">${list.length}</span> حصة · ${durLabel(total)}`:"لا حصص في هذا اليوم"}</div>
+      </div>
+      <button class="addbtn" type="button" data-add="${ds}">+ حصة</button>
+    </div>
+    <div class="panel-body">
+      ${clashes.size?`<div class="warnbox">⚠ يوجد موعدان متداخلان في هذا اليوم — راجع الأوقات.</div>`:""}
+      ${list.length?list.map(l=>lessonRow(l,clashes)).join(""):`<p class="empty">اليوم فارغ — اضغط «+ حصة» لإضافة موعد.</p>`}
+    </div>
+  </section>`;
+}
+
+function renderCal(){
+  let html = monthNav();
+  if(state.mode==="month"){
+    html += `<div class="wk" role="grid">`;
+    DAYS_S.forEach((d,i)=> html += `<div class="wkh${(i===5||i===6)?" off":""}">${d}</div>`);
+    const first = new Date(state.cur.y, state.cur.m, 1);
+    const lead = first.getDay();
+    const dim = new Date(state.cur.y, state.cur.m+1, 0).getDate();
+    for(let i=0;i<lead;i++) html += `<div class="cell blank"></div>`;
+    for(let d=1;d<=dim;d++){
+      const ds = state.cur.y+"-"+pad(state.cur.m+1)+"-"+pad(d);
+      const dow = new Date(state.cur.y,state.cur.m,d).getDay();
+      const list = lessonsOn(ds);
+      const clashes = clashSet(list);
+      const cls = ["cell"];
+      if(dow===5||dow===6) cls.push("off");
+      if(ds===TODAY) cls.push("today");
+      if(ds===state.sel) cls.push("sel");
+      const dots = [...new Set(list.map(l=>subjOf(l.subj).c))].slice(0,3);
+      html += `<button type="button" class="${cls.join(" ")}" data-date="${ds}" aria-label="${longDate(ds)}">
+        ${clashes.size?`<span class="clash"></span>`:""}
+        <span class="d num">${d}</span>
+        <span class="dots">${dots.map(c=>`<i style="background:${c}"></i>`).join("")}</span>
+      </button>`;
+    }
+    html += `</div>` + dayPanel(state.sel) + legend();
+  }else{
+    const sel = parse(state.sel), sun = addDays(sel, -sel.getDay());
+    let wTotal = 0, wCount = 0;
+    let body = "";
+    for(let i=0;i<7;i++){
+      const d = addDays(sun,i), ds = key(d);
+      const list = lessonsOn(ds), clashes = clashSet(list);
+      wTotal += list.reduce((s,l)=>s+durOf(l),0); wCount += list.length;
+      body += `<div class="daycard${ds===TODAY?" is-today":""}">
+        <div class="daycard-h">
+          <span class="dn num">${d.getDate()}</span>
+          <span class="dw">${DAYS[d.getDay()]} · ${MONTHS[d.getMonth()]}</span>
+          <button class="mini" type="button" data-add="${ds}">+ حصة</button>
+        </div>
+        ${clashes.size?`<div class="warnbox" style="margin-top:8px">⚠ موعدان متداخلان.</div>`:""}
+        ${list.length?list.map(l=>lessonRow(l,clashes)).join(""):`<p style="font-size:12.5px;color:var(--ink-soft);margin:4px 0 0">لا حصص.</p>`}
+      </div>`;
+    }
+    html += `<p class="hint" style="margin-top:14px">أسبوع ${longDate(key(sun))} — <b class="num">${wCount}</b> حصة · ${durLabel(wTotal)}</p>` + body + legend();
+  }
+  main.innerHTML = html;
+  const p=document.getElementById("prevm"), n=document.getElementById("nextm");
+  if(p) p.onclick=()=>{ const i=state.cur.y*12+state.cur.m-1; state.cur={y:Math.floor(i/12),m:i%12}; render(); };
+  if(n) n.onclick=()=>{ const i=state.cur.y*12+state.cur.m+1; state.cur={y:Math.floor(i/12),m:i%12}; render(); };
+  main.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ state.mode=b.dataset.mode; render(); });
+  main.querySelectorAll(".cell[data-date]").forEach(b=>b.onclick=()=>{ state.sel=b.dataset.date; render(); });
+  wire();
+}
+
+function legend(){
+  return `<div class="legend">
+    ${SUBJECTS.map(s=>`<span><i style="background:${s.c}"></i>${s.l}</span>`).join("")}
+    <span><i style="background:var(--warn)"></i>تعارض مواعيد</span>
+  </div>
+  <p class="hint">البيانات محفوظة على هذا الجهاز فقط — لا مزامنة ولا حساب.</p>`;
+}
+
+/* ---------- تبويب الطلاب ---------- */
+function renderStudents(){
+  const all = expand(winFrom(), winTo());
+  const byStu = {};
+  all.forEach(l=>{ (byStu[l.student||"بدون اسم"] ||= []).push(l); });
+  const names = Object.keys(byStu).sort((a,b)=>byStu[b].length-byStu[a].length);
+
+  let html = `<div class="chips" role="group" aria-label="تصفية حسب المادة">
+    <button class="chip" type="button" data-sf="all" aria-pressed="${state.subjFilter==="all"}">كل المواد</button>
+    ${SUBJECTS.map(s=>`<button class="chip" type="button" data-sf="${s.v}" aria-pressed="${state.subjFilter===s.v}"><i style="background:${s.c}"></i>${s.l}</button>`).join("")}
+  </div>`;
+
+  const shown = names.filter(n=> state.subjFilter==="all" || byStu[n].some(l=>l.subj===state.subjFilter));
+  if(!shown.length){
+    html += `<div class="card"><p class="empty">لا طلاب بعد.<br>افتح التقويم واختر يومًا ثم اضغط «+ حصة».</p></div>`;
+  }else{
+    shown.forEach(n=>{
+      const ls = byStu[n].filter(l=> state.subjFilter==="all" || l.subj===state.subjFilter);
+      const g = gradeOf(ls[0].grade), sb = subjOf(ls[0].subj);
+      const upcoming = ls.filter(l=>l.date>=TODAY && !l.done);
+      const next = upcoming[0];
+      const totalMin = ls.reduce((s,l)=>s+durOf(l),0);
+      const subjs = [...new Set(ls.map(l=>subjOf(l.subj).l))].join(" و");
+      html += `<div class="card">
+        <div class="stu-h">
+          <span class="avatar" style="background:${g.c}">${g.s}</span>
+          <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subjs}</span></span>
+          <span class="cnt"><b class="num">${ls.length}</b><span>حصة</span></span>
+        </div>
+        <div class="nextline">
+          ${next
+            ? `القادمة: <b>${longDate(next.date)}</b> · <b class="num">${fmtT(next.from)}</b> — ${fmtT(next.to)}`
+            : `لا حصص قادمة مجدولة.`}
+          <br>مجموع الوقت المجدول: <b>${durLabel(totalMin)}</b>
+        </div>
+      </div>`;
+    });
+  }
+  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}.</p>`;
+  main.innerHTML = html;
+  main.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{ state.subjFilter=b.dataset.sf; render(); });
+  wire();
+}
+
+/* ---------- تبويب الحسابات ---------- */
+function renderPay(){
+  const book = payBook();
+  const names = Object.keys(book).sort((a,b)=> book[b].rest - book[a].rest);
+  const mFrom = TODAY.slice(0,8)+"01";
+  const moPaid = pay.pays.filter(p=>p.date>=mFrom && p.date<=TODAY).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const totRest = names.reduce((s,n)=>s+book[n].rest,0);
+  const owing = names.filter(n=>book[n].rest > 0.0005).length;
+  const moDone = doneUpToToday().filter(l=>l.date>=mFrom).length;
+
+  let html = `<div class="tiles">
+    <div class="tile"><div class="v num" style="font-size:22px">${kd(moPaid)}</div><div class="k">محصَّل هذا الشهر (د.ك)</div></div>
+    <div class="tile"><div class="v num" style="font-size:22px;color:${totRest>0.0005?"var(--warn)":"var(--chem)"}">${kd(totRest)}</div><div class="k">إجمالي المتبقي</div></div>
+    <div class="tile"><div class="v num">${moDone}</div><div class="k">حصص منفَّذة هذا الشهر</div></div>
+    <div class="tile"><div class="v num">${owing}</div><div class="k">طلاب عليهم مبالغ</div></div>
+  </div>
+
+  <div class="card">
+    <h3>سعر الحصة الافتراضي</h3>
+    <div class="pay-row">
+      <label for="gprice">د.ك لكل حصة</label>
+      <input type="number" id="gprice" inputmode="decimal" min="0" step="0.5" value="${pay.price}">
+      <span style="font-size:11.5px;color:var(--ink-soft)">يمكن تخصيص سعر مختلف لكل طالب أدناه.</span>
+    </div>
+  </div>`;
+
+  if(!names.length){
+    html += `<div class="card"><p class="empty">لا توجد حسابات بعد.<br>علّم الحصة بعلامة ✓ في التقويم بعد تنفيذها، فتُحتسب هنا تلقائيًا.</p></div>`;
+  }
+
+  names.forEach(n=>{
+    const b = book[n];
+    const g = gradeOf(b.grade);
+    const subjs = [...b.subjs].map(v=>subjOf(v).l).join(" و") || "—";
+    const cleared = b.rest <= 0.0005;
+    html += `<div class="card">
+      <div class="stu-h">
+        <span class="avatar" style="background:${g.c}">${g.s}</span>
+        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subjs}</span></span>
+        <span class="cnt"><b class="num">${b.n}</b><span>منفَّذة</span></span>
+      </div>
+      <div class="pay-grid">
+        <div><b class="num">${kd(b.due)}</b><span>المستحق</span></div>
+        <div><b class="num">${kd(b.paid)}</b><span>المدفوع</span></div>
+        <div class="${cleared?"clear":"owed"}"><b class="num">${kd(b.rest)}</b><span>${cleared?"مسدَّد":"المتبقي"}</span></div>
+      </div>
+      <div class="pay-row">
+        <label for="r-${esc(n)}">سعر حصته</label>
+        <input type="number" id="r-${esc(n)}" data-rate="${esc(n)}" inputmode="decimal" min="0" step="0.5"
+               value="${pay.rates[n]!==undefined?pay.rates[n]:""}" placeholder="${pay.price||0}">
+        <button class="minibtn solid" type="button" data-addpay="${esc(n)}">+ دفعة</button>
+      </div>
+      ${b.items.length?`<div class="paylist">${b.items.slice(0,6).map(p=>`
+        <div><b class="num">${kd(p.amount)}</b><span>${longDate(p.date)}${p.note?" · "+esc(p.note):""}</span>
+        <button class="x" type="button" data-delpay="${p.id}" aria-label="حذف الدفعة">✕</button></div>`).join("")}
+        ${b.items.length>6?`<div><span>وأقدم منها ${b.items.length-6} دفعة.</span></div>`:""}</div>`:""}
+    </div>`;
+  });
+
+  html += `<p class="hint">الحساب مبني على الحصص المعلَّمة كمنفَّذة حتى ${longDate(TODAY)}.<br>النسخة الاحتياطية في تبويب الإحصائيات.</p>`;
+  main.innerHTML = html;
+
+  const gp = document.getElementById("gprice");
+  if(gp) gp.onchange = ()=>{ pay.price = Math.max(0, Number(gp.value)||0); savePay(); render(); };
+  main.querySelectorAll("[data-rate]").forEach(i=>i.onchange=()=>{
+    const n = i.dataset.rate, v = Number(i.value);
+    if(i.value==="" || !(v>0)) delete pay.rates[n]; else pay.rates[n]=v;
+    savePay(); render();
+  });
+  main.querySelectorAll("[data-addpay]").forEach(b=>b.onclick=()=>openPay(b.dataset.addpay));
+  main.querySelectorAll("[data-delpay]").forEach(b=>b.onclick=()=>{
+    const p = pay.pays.find(x=>x.id===b.dataset.delpay); if(!p) return;
+    askConfirm({
+      title:"حذف الدفعة",
+      text:"سيُحذف سجل هذه الدفعة نهائيًا.",
+      what: p.student+" — "+kd(p.amount)+" د.ك · "+longDate(p.date),
+      ok:"حذف",
+      run: ()=>{ pay.pays = pay.pays.filter(x=>x.id!==p.id); savePay(); render(); }
+    });
+  });
+  wire();
+}
+
+/* ---------- تبويب الإحصائيات ---------- */
+function renderStats(){
+  const sel = new Date();
+  const sun = addDays(sel, -sel.getDay());
+  const wk = expand(key(sun), key(addDays(sun,6)));
+  const mFrom = TODAY.slice(0,8)+"01";
+  const mTo   = key(new Date(sel.getFullYear(), sel.getMonth()+1, 0));
+  const mo = expand(mFrom, mTo);
+
+  const students = new Set(expand(winFrom(), winTo()).map(l=>l.student).filter(Boolean));
+  const wkMin = wk.reduce((s,l)=>s+durOf(l),0);
+  const moMin = mo.reduce((s,l)=>s+durOf(l),0);
+  const todays = lessonsOn(TODAY);
+
+  const bySubj = SUBJECTS.map(s=>({label:s.l,color:s.c,n:mo.filter(l=>l.subj===s.v).length,
+                                   m:mo.filter(l=>l.subj===s.v).reduce((a,l)=>a+durOf(l),0)})).filter(x=>x.n>0);
+  const byGrade = GRADES.map(g=>({label:g.l,color:g.c,n:mo.filter(l=>l.grade===g.v).length})).filter(x=>x.n>0);
+  const maxS = Math.max(1,...bySubj.map(x=>x.n)), maxG = Math.max(1,...byGrade.map(x=>x.n));
+
+  const perStu = {};
+  mo.forEach(l=>{ const k=l.student||"بدون اسم"; perStu[k]=(perStu[k]||0)+durOf(l); });
+  const topStu = Object.entries(perStu).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxStu = Math.max(1,...topStu.map(x=>x[1]));
+
+  let html = `<div class="tiles">
+    <div class="tile"><div class="v num">${todays.length}</div><div class="k">حصص اليوم</div></div>
+    <div class="tile"><div class="v num">${wk.length}</div><div class="k">حصص هذا الأسبوع</div></div>
+    <div class="tile"><div class="v" style="font-size:19px">${durLabel(wkMin)}</div><div class="k">ساعات هذا الأسبوع</div></div>
+    <div class="tile"><div class="v num">${students.size}</div><div class="k">عدد الطلاب</div></div>
+  </div>
+
+  <div class="card"><h3>${MONTHS[sel.getMonth()]} <span class="num">${sel.getFullYear()}</span></h3>
+    <div class="nextline" style="border:0;padding:0">
+      <b class="num">${mo.length}</b> حصة مجدولة · مجموع <b>${durLabel(moMin)}</b>
+    </div>
+  </div>`;
+
+  html += `<div class="card"><h3>حسب المادة (هذا الشهر)</h3>`;
+  if(bySubj.length){
+    bySubj.forEach(x=>{
+      html += `<div class="bar-row"><div class="l"><span>${x.label}</span><b class="num">${x.n} حصة · ${durLabel(x.m)}</b></div>
+        <div class="track"><div class="fill" style="width:${Math.round(x.n/maxS*100)}%;background:${x.color}"></div></div></div>`;
+    });
+  } else html += `<p class="empty" style="padding:4px 0">لا حصص هذا الشهر.</p>`;
+  html += `</div>`;
+
+  html += `<div class="card"><h3>حسب الصف (هذا الشهر)</h3>`;
+  if(byGrade.length){
+    byGrade.forEach(x=>{
+      html += `<div class="bar-row"><div class="l"><span>${x.label}</span><b class="num">${x.n}</b></div>
+        <div class="track"><div class="fill" style="width:${Math.round(x.n/maxG*100)}%;background:${x.color}"></div></div></div>`;
+    });
+  } else html += `<p class="empty" style="padding:4px 0">لا حصص هذا الشهر.</p>`;
+  html += `</div>`;
+
+  html += `<div class="card"><h3>أكثر الطلاب ساعاتٍ (هذا الشهر)</h3>`;
+  if(topStu.length){
+    topStu.forEach(([n,m])=>{
+      html += `<div class="bar-row"><div class="l"><span>${esc(n)}</span><b>${durLabel(m)}</b></div>
+        <div class="track"><div class="fill" style="width:${Math.round(m/maxStu*100)}%;background:var(--violet)"></div></div></div>`;
+    });
+  } else html += `<p class="empty" style="padding:4px 0">لا بيانات بعد.</p>`;
+  html += `</div>`;
+
+  html += `<div class="card"><h3>النسخة الاحتياطية</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
+      البيانات محفوظة في هذا المتصفح فقط. نزّل نسخة بين حين وآخر، واستوردها عند تغيير الجهاز.</p>
+    <div class="pay-row">
+      <button class="minibtn solid" type="button" id="bk-save">تنزيل نسخة</button>
+      <button class="minibtn" type="button" id="bk-load">استيراد من ملف</button>
+      <input type="file" id="bk-file" accept="application/json,.json" hidden>
+    </div>
+    <p id="bk-msg" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0"></p>
+  </div>`;
+
+  html += `<p class="hint">إجمالي البنود المسجَّلة: <b class="num">${lessons.length}</b>${lessons.filter(isRep).length?` — منها <b class="num">${lessons.filter(isRep).length}</b> متكرّرة`:""}</p>`;
+  main.innerHTML = html;
+  wireBackup();
+  wire();
+}
+
+/* ---------- التصدير والاستيراد ---------- */
+function backupBlob(){
+  return JSON.stringify({ app:"hisas", v:1, at:new Date().toISOString(), lessons, pay }, null, 1);
+}
+function wireBackup(){
+  const msg = document.getElementById("bk-msg");
+  const file = document.getElementById("bk-file");
+  const sv = document.getElementById("bk-save");
+  const ld = document.getElementById("bk-load");
+  if(!sv) return;
+
+  sv.onclick = ()=>{
+    try{
+      const blob = new Blob([backupBlob()], {type:"application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "hisas-" + TODAY + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      msg.textContent = "تم تجهيز الملف. احفظه في «الملفات» أو iCloud.";
+    }catch(e){ msg.textContent = "تعذّر التنزيل في هذا المتصفح."; }
+  };
+
+  ld.onclick = ()=>file.click();
+  file.onchange = ()=>{
+    const f = file.files && file.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      let data;
+      try{ data = JSON.parse(r.result); }catch(e){ msg.textContent = "الملف غير صالح."; return; }
+      const inc = Array.isArray(data) ? data : data.lessons;
+      if(!Array.isArray(inc)){ msg.textContent = "الملف لا يحتوي حصصًا."; return; }
+
+      const have = new Set(lessons.map(l=>l.id));
+      const added = inc.filter(l=>l && l.id && !have.has(l.id));
+      lessons = lessons.concat(added);
+      save();
+
+      let addedPays = 0;
+      if(data.pay){
+        if(!pay.price && Number(data.pay.price)) pay.price = Number(data.pay.price);
+        Object.keys(data.pay.rates||{}).forEach(k=>{ if(pay.rates[k]===undefined) pay.rates[k]=data.pay.rates[k]; });
+        const hp = new Set(pay.pays.map(x=>x.id));
+        (data.pay.pays||[]).forEach(x=>{ if(x && x.id && !hp.has(x.id)){ pay.pays.push(x); addedPays++; } });
+        savePay();
+      }
+      msg.textContent = "تم استيراد " + added.length + " حصة و" + addedPays + " دفعة.";
+      file.value = "";
+      render();
+    };
+    r.readAsText(f);
+  };
+}
+
+function wire(){
+  main.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>openSheet(null,b.dataset.add));
+  main.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{
+    const [id,ds]=b.dataset.edit.split("|");
+    openSheet(lessons.find(l=>l.id===id), null, ds);
+  });
+  main.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{
+    const [id,ds]=b.dataset.toggle.split("|");
+    const l = lessons.find(x=>x.id===id); if(!l) return;
+    if(isRep(l)){
+      const m = Object.assign({}, l.doneOn||{});
+      if(m[ds]) delete m[ds]; else m[ds]=true;
+      putLesson(Object.assign({},l,{doneOn:m}));
+    } else putLesson(Object.assign({},l,{done:!l.done}));
+  });
+}
+
+/* ============ نافذة الدفعة ============ */
+const pscrim = document.getElementById("pscrim");
+let payFor = null;
+function openPay(name){
+  payFor = name;
+  document.getElementById("psub").textContent = name;
+  document.getElementById("p-amount").value = "";
+  document.getElementById("p-date").value = TODAY;
+  document.getElementById("p-note").value = "";
+  document.getElementById("p-msg").hidden = true;
+  pscrim.hidden = false;
+  setTimeout(()=>document.getElementById("p-amount").focus(), 60);
+}
+function closePay(){ pscrim.hidden = true; payFor = null; }
+document.getElementById("p-cancel").onclick = closePay;
+pscrim.onclick = e => { if(e.target===pscrim) closePay(); };
+document.getElementById("p-save").onclick = ()=>{
+  const amt = Number(document.getElementById("p-amount").value);
+  const date = document.getElementById("p-date").value || TODAY;
+  const msg = document.getElementById("p-msg");
+  if(!(amt>0)){ msg.textContent = "أدخل مبلغًا أكبر من صفر."; msg.hidden = false; return; }
+  pay.pays.push({
+    id: "p"+Date.now()+Math.floor(Math.random()*1000),
+    student: payFor, amount: amt, date,
+    note: document.getElementById("p-note").value.trim()
+  });
+  savePay(); closePay(); render();
+};
+
+/* ============ نافذة التأكيد ============ */
+const cscrim = document.getElementById("cscrim");
+let run1=null, run2=null;
+function askConfirm(o){
+  document.getElementById("ctitle").textContent = o.title;
+  document.getElementById("ctext").textContent = o.text;
+  const w = document.getElementById("cwhat"); w.textContent = o.what||""; w.hidden = !o.what;
+  document.getElementById("c-ok").textContent = o.ok;
+  const b2 = document.getElementById("c-ok2"); b2.hidden = !o.ok2; if(o.ok2) b2.textContent = o.ok2;
+  run1 = o.run; run2 = o.run2||null;
+  cscrim.hidden = false;
+}
+function closeConfirm(){ cscrim.hidden = true; run1=null; run2=null; }
+document.getElementById("c-no").onclick = closeConfirm;
+cscrim.onclick = e => { if(e.target===cscrim) closeConfirm(); };
+document.getElementById("c-ok").onclick  = ()=>{ const r=run1; closeConfirm(); if(r) r(); };
+document.getElementById("c-ok2").onclick = ()=>{ const r=run2; closeConfirm(); if(r) r(); };
+
+/* ============ نافذة الحصة ============ */
+const scrim = document.getElementById("scrim");
+let draft = {grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}};
+
+function optButtons(el, items, cur, cb){
+  el.innerHTML = items.map(it=>`<button class="opt" type="button" data-v="${it.v}" aria-pressed="${it.v===cur}">${it.dot?`<i style="background:${it.dot}"></i>`:""}${it.l}</button>`).join("");
+  el.querySelectorAll(".opt").forEach(b=>b.onclick=()=>cb(b.dataset.v));
+}
+function paintOpts(){
+  optButtons(document.getElementById("f-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), draft.grade,
+    v=>{ draft.grade=v; paintOpts(); });
+  optButtons(document.getElementById("f-subj"), SUBJECTS.map(s=>({v:s.v,l:s.l,dot:s.c})), draft.subj,
+    v=>{ draft.subj=v; paintOpts(); });
+  optButtons(document.getElementById("f-rep"), REPEATS.map(r=>({v:r.v,l:r.l})), draft.rep.t,
+    v=>{
+      draft.rep.t=v;
+      if(v==="weekly" && !draft.rep.d.length){
+        const ds = document.getElementById("f-date").value || state.sel;
+        draft.rep.d = [parse(ds).getDay()];
+      }
+      paintOpts();
+    });
+  const box = document.getElementById("f-rep-days");
+  box.hidden = draft.rep.t !== "weekly";
+  if(!box.hidden){
+    box.innerHTML = DAYS_S.map((d,i)=>`<button class="opt" type="button" data-d="${i}" aria-pressed="${draft.rep.d.includes(i)}">${d}</button>`).join("");
+    box.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.d;
+      draft.rep.d = draft.rep.d.includes(i) ? draft.rep.d.filter(x=>x!==i) : draft.rep.d.concat(i);
+      paintOpts();
+    });
+  }
+  document.getElementById("f-rep-until").hidden = draft.rep.t === "none";
+  document.getElementById("f-until").value = draft.rep.until || "";
+}
+function openSheet(les, date, occDate){
+  state.editing = les ? les.id : null;
+  state.occDate = occDate || (les ? les.date : null);
+  draft = {
+    grade: les ? (les.grade||"10") : draft.grade,
+    subj:  les ? (les.subj||"chem") : draft.subj,
+    rep:   les && les.rep ? {t:les.rep.t||"none", d:(les.rep.d||[]).slice(), until:les.rep.until||""}
+                          : {t:"none", d:[], until:""}
+  };
+  const ds = les ? les.date : (date || state.sel);
+  const repeating = les && isRep(les);
+  document.getElementById("sheettitle").textContent = les ? (repeating?"تعديل حصة متكرّرة":"تعديل الحصة") : "حصة جديدة";
+  document.getElementById("sheetsub").textContent = repeating
+    ? `تبدأ من ${longDate(ds)} · ${repLabel(les)} — التعديل يسري على كل المواعيد`
+    : longDate(ds);
+  document.getElementById("f-student").value = les ? (les.student||"") : "";
+  document.getElementById("f-note").value    = les ? (les.note||"") : "";
+  document.getElementById("f-date").value    = ds;
+  document.getElementById("f-from").value    = les ? (les.from||"16:00") : "16:00";
+  document.getElementById("f-to").value      = les ? (les.to||"17:30")  : "17:30";
+  document.getElementById("f-del").hidden    = !les;
+  document.getElementById("f-msg").hidden    = true;
+  document.querySelector('label[for="f-date"]').textContent = repeating ? "تاريخ بداية التكرار" : "التاريخ";
+  paintOpts();
+  scrim.hidden = false;
+  setTimeout(()=>document.getElementById("f-student").focus(), 50);
+}
+function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; }
+document.getElementById("f-cancel").onclick = closeSheet;
+scrim.onclick = e => { if(e.target===scrim) closeSheet(); };
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Escape") return;
+  if(!cscrim.hidden) closeConfirm(); else if(!scrim.hidden) closeSheet();
+});
+
+document.getElementById("f-save").onclick = ()=>{
+  const msg = document.getElementById("f-msg");
+  const student = document.getElementById("f-student").value.trim();
+  const date = document.getElementById("f-date").value;
+  const from = document.getElementById("f-from").value;
+  const to   = document.getElementById("f-to").value;
+  const show = t => { msg.textContent = t; msg.hidden = false; };
+  if(!student){ show("اكتب اسم الطالب."); document.getElementById("f-student").focus(); return; }
+  if(!date){ show("اختر تاريخ الحصة."); return; }
+  if(!from || !to){ show("حدّد وقت البداية والنهاية."); return; }
+  if(mins(to) <= mins(from)){ show("وقت النهاية يجب أن يكون بعد وقت البداية."); return; }
+
+  const old = state.editing ? lessons.find(l=>l.id===state.editing) : null;
+  const until = document.getElementById("f-until").value || "";
+  let rep = {t:"none", d:[], until:""};
+  if(draft.rep.t !== "none"){
+    let days = draft.rep.d.slice();
+    if(draft.rep.t==="weekly" && !days.length) days = [parse(date).getDay()];
+    rep = {t:draft.rep.t, d:days, until};
+  }
+  const l = {
+    id: old ? old.id : "l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    student, grade:draft.grade, subj:draft.subj, date, from, to,
+    note: document.getElementById("f-note").value.trim(),
+    done: (old && rep.t==="none") ? !!old.done : false,
+    rep,
+    doneOn: rep.t==="none" ? {} : (old && old.doneOn ? old.doneOn : {}),
+    skip:   rep.t==="none" ? [] : (old && old.skip   ? old.skip   : []),
+    ts: old ? (old.ts||Date.now()) : Date.now()
+  };
+  state.sel = date;
+  const d = parse(date); state.cur = {y:d.getFullYear(), m:d.getMonth()};
+  closeSheet();
+  putLesson(l);
+};
+
+document.getElementById("f-del").onclick = ()=>{
+  const id = state.editing, ds = state.occDate;
+  const l = lessons.find(x=>x.id===id);
+  closeSheet();
+  if(!l) return;
+  if(isRep(l)){
+    askConfirm({
+      title:"حذف حصة متكرّرة",
+      text:"هذه الحصة تتكرّر. اختر ما تريد حذفه — لا يمكن التراجع.",
+      what:(l.student||"")+" — موعد "+longDate(ds)+" · "+fmtT(l.from),
+      ok:"حذف السلسلة كلها",
+      ok2:"حذف موعد "+longDate(ds)+" فقط",
+      run: ()=>delLesson(id),
+      run2: ()=>putLesson(Object.assign({}, l, {skip:(l.skip||[]).concat(ds)}))
+    });
+    return;
+  }
+  askConfirm({
+    title:"حذف الحصة",
+    text:"سيُحذف هذا الموعد نهائيًا.",
+    what:(l.student||"")+" — "+longDate(l.date)+" · "+fmtT(l.from),
+    ok:"حذف",
+    run: ()=>delLesson(id)
+  });
+};
+
+/* ============ التبويبات والوضع الليلي ============ */
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); window.scrollTo(0,0); });
+document.getElementById("themebtn").onclick = ()=>{
+  const cur = document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.setAttribute("data-theme", dark?"light":"dark");
+  try{ localStorage.setItem("hisas_theme", dark?"light":"dark"); }catch(e){}
+};
+try{ const th=localStorage.getItem("hisas_theme"); if(th) document.documentElement.setAttribute("data-theme",th); }catch(e){}
+
+load();
+loadPay();
+render();
+</script>
+
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
