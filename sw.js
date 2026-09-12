@@ -1,9 +1,10 @@
 /* ============================================================
    Service Worker — جدول الحصص الخارجية
-   النسخة 1: تبحث عن تحديث عند كل فتح، وتعمل أوفلاين.
+   النسخة 2: تعرض المخزَّن فورًا وتحدّث في الخلفية، وتخزّن الخطوط.
 
    عند رفع تحديث مستقبلًا: غيّر الرقم في السطر التالي فقط
-   (hisas-v1 ← hisas-v2) ليأخذ الجوال النسخة الجديدة فورًا.
+   (hisas-v2 ← hisas-v3) ليأخذ الجوال النسخة الجديدة.
+   ملاحظة: التحديث يُثبَّت في الفتح الأول ويظهر في الفتح الثاني.
    ============================================================ */
 const CACHE = "hisas-v2";
 
@@ -16,7 +17,7 @@ const SHELL = [
   "./icons/apple-touch-icon.png"
 ];
 
-const NET_TIMEOUT = 3500;
+const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", e => {
   e.waitUntil(
@@ -34,48 +35,39 @@ self.addEventListener("activate", e => {
   );
 });
 
-function networkFirst(req) {
-  return new Promise(resolve => {
-    let settled = false;
-    const done = r => { if (!settled) { settled = true; resolve(r); } };
-    const timer = setTimeout(() => {
-      caches.match(req).then(hit => { if (hit) done(hit); });
-    }, NET_TIMEOUT);
-    fetch(req, { cache: "no-store" })
-      .then(res => {
-        clearTimeout(timer);
-        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {}); }
-        done(res);
-      })
-      .catch(() => {
-        clearTimeout(timer);
-        caches.match(req).then(hit => {
-          if (hit) done(hit);
-          else caches.match("./index.html").then(fb => done(fb));
-        });
-      });
-  });
-}
-
-function staleWhileRevalidate(req) {
+/* يعرض المخزَّن فورًا، ويجلب التحديث في الخلفية للفتح القادم */
+function staleWhileRevalidate(req, fallback) {
   return caches.match(req).then(hit => {
-    const net = fetch(req).then(res => {
-      if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {}); }
-      return res;
-    }).catch(() => hit);
-    return hit || net;
+    const net = fetch(req)
+      .then(res => {
+        if (res && (res.ok || res.type === "opaque")) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      })
+      .catch(() => hit || (fallback ? caches.match(fallback) : undefined));
+
+    if (hit) { net.catch(() => {}); return hit; }
+    return net;
   });
 }
 
 self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
+
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
-  const p = url.pathname;
-  if (req.mode === "navigate" || p.endsWith("/") || p.endsWith("/index.html")) {
-    e.respondWith(networkFirst(req));
+
+  /* الخطوط: من المخزَّن أولًا، فلا انتظار للشبكة ولا تعطّل بلا إنترنت */
+  if (FONT_HOSTS.includes(url.hostname)) {
+    e.respondWith(staleWhileRevalidate(req));
     return;
   }
-  e.respondWith(staleWhileRevalidate(req));
+
+  if (url.origin !== self.location.origin) return;
+
+  const p = url.pathname;
+  const isPage = req.mode === "navigate" || p.endsWith("/") || p.endsWith("/index.html");
+  e.respondWith(staleWhileRevalidate(req, isPage ? "./index.html" : null));
 });

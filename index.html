@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#1668E3">
 <meta name="description" content="جدول الحصص الخارجية — المواعيد والتكرار وكشف تعارض الأوقات.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
@@ -424,7 +426,7 @@ function longDate(s){
 const LS = "hisas_v1";
 let lessons = [];
 function load(){ try{ lessons = JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ lessons=[]; } }
-function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} bumpMemo(); }
 function putLesson(l){
   const i = lessons.findIndex(x=>x.id===l.id);
   if(i>=0) lessons[i]=l; else lessons.push(l);
@@ -469,7 +471,7 @@ function payBook(){
 
 /* ============ التكرار ============ */
 const isRep = l => !!(l.rep && l.rep.t && l.rep.t !== "none");
-const HORIZON_BACK = 90, HORIZON_FWD = 400;
+const HORIZON_BACK = 90, HORIZON_FWD = 180;
 
 function repLabel(l){
   if(!isRep(l)) return "";
@@ -502,7 +504,7 @@ function lessonsOn(ds){
   return lessons.filter(l=>hits(l,ds)).map(l=>occOf(l,ds))
     .sort((a,b)=> mins(a.from)-mins(b.from) || (a.ts||0)-(b.ts||0));
 }
-function expand(from, to){
+function expandRaw(from, to){
   const out = [];
   lessons.forEach(l=>{
     if(!isRep(l)){ if(l.date>=from && l.date<=to) out.push(occOf(l,l.date)); return; }
@@ -516,6 +518,17 @@ function expand(from, to){
   });
   return out.sort((a,b)=> a.date.localeCompare(b.date) || mins(a.from)-mins(b.from));
 }
+/* تخزين مؤقت: يُفرَغ عند أي تعديل على الحصص */
+const _memo = new Map();
+function bumpMemo(){ _memo.clear(); }
+function expand(from, to){
+  const k = from + "|" + to;
+  if(_memo.has(k)) return _memo.get(k);
+  const v = expandRaw(from, to);
+  _memo.set(k, v);
+  return v;
+}
+
 const winFrom = () => key(addDays(new Date(), -HORIZON_BACK));
 const winTo   = () => key(addDays(new Date(),  HORIZON_FWD));
 
@@ -961,12 +974,26 @@ function wire(){
   });
   main.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{
     const [id,ds]=b.dataset.toggle.split("|");
-    const l = lessons.find(x=>x.id===id); if(!l) return;
+    const i = lessons.findIndex(x=>x.id===id); if(i<0) return;
+    const l = lessons[i];
+    let now;
     if(isRep(l)){
       const m = Object.assign({}, l.doneOn||{});
       if(m[ds]) delete m[ds]; else m[ds]=true;
-      putLesson(Object.assign({},l,{doneOn:m}));
-    } else putLesson(Object.assign({},l,{done:!l.done}));
+      lessons[i] = Object.assign({}, l, {doneOn:m});
+      now = !!m[ds];
+    } else {
+      now = !l.done;
+      lessons[i] = Object.assign({}, l, {done:now});
+    }
+    save();
+    /* تحديث موضعي: أسرع بكثير من إعادة بناء الشاشة */
+    const row = b.closest(".les");
+    if(row && state.tab==="cal"){
+      row.classList.toggle("done", now);
+      b.setAttribute("aria-checked", now ? "true" : "false");
+      paintBadge();
+    } else render();
   });
 }
 
