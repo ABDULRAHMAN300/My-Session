@@ -3,10 +3,10 @@
    النسخة 2: تعرض المخزَّن فورًا وتحدّث في الخلفية، وتخزّن الخطوط.
 
    عند رفع تحديث مستقبلًا: غيّر الرقم في السطر التالي فقط
-   (hisas-v2 ← hisas-v3) ليأخذ الجوال النسخة الجديدة.
+   (hisas-v4 ← hisas-v5) ليأخذ الجوال النسخة الجديدة.
    ملاحظة: التحديث يُثبَّت في الفتح الأول ويظهر في الفتح الثاني.
    ============================================================ */
-const CACHE = "hisas-v2";
+const CACHE = "hisas-v4";
 
 const SHELL = [
   "./",
@@ -14,7 +14,8 @@ const SHELL = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
-  "./icons/apple-touch-icon.png"
+  "./icons/apple-touch-icon.png",
+  "./icons/icon-maskable.png"
 ];
 
 const FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];

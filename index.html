@@ -3,13 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#1668E3">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FBF7FF">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#150F22">
 <meta name="description" content="جدول الحصص الخارجية — المواعيد والتكرار وكشف تعارض الأوقات.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="./icons/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1080x2340.png" media="(device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="./icons/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -233,6 +242,165 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
 .btn.ghost{background:var(--surface-2);color:var(--ink)}
 .btn.del{background:var(--warn);color:#fff}
 .what{font-size:13.5px;color:var(--ink);background:var(--surface-2);border-radius:11px;padding:11px 12px;margin:12px 0 2px;line-height:1.6}
+.stop{display:block;width:100%;text-align:start;margin-top:6px;border:0;border-radius:9px;padding:6px 9px;
+  background:color-mix(in srgb,var(--violet) 9%,transparent);color:var(--ink);font-family:var(--font-b);
+  font-size:12.5px;line-height:1.6;word-wrap:break-word}
+.stop b{font-family:var(--font-d);font-weight:600;color:var(--violet)}
+.stop span{display:block;color:var(--ink-soft);font-size:11.5px}
+.stop.add{background:transparent;border:1px dashed var(--line);color:var(--ink-soft);font-family:var(--font-d)}
+.prog-last{margin-top:10px;border-inline-start:3px solid var(--violet);background:var(--surface-2);
+  border-radius:10px;padding:9px 11px;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.prog-last .k{font-size:11px;color:var(--ink-soft);font-family:var(--font-d)}
+.prog-last b{font-family:var(--font-d);font-size:14.5px;font-weight:600;line-height:1.5;word-wrap:break-word}
+.prog-last .hw{font-size:12px;color:var(--ink-soft)}
+.prog-last .minibtn{margin-top:4px}
+.prog-hist{margin-top:8px;display:flex;flex-direction:column}
+.prog-hist button{display:flex;gap:10px;align-items:baseline;text-align:start;border:0;background:transparent;
+  padding:7px 2px;border-top:1px solid var(--line-soft);color:var(--ink);font-size:12.5px;font-family:var(--font-b)}
+.prog-hist button span{flex-shrink:0;width:52px;color:var(--ink-soft);font-size:11.5px}
+.prog-hist button b{font-weight:500;word-wrap:break-word;min-width:0}
+.prog-hist .more{font-size:11.5px;color:var(--ink-soft);padding-top:6px}
+
+
+/* ===================== لمسات لونية وجاذبية ===================== */
+:root{ --sun:#FFB020; --sky:#1668E3; --mint:#06A94D; --grad-cool:linear-gradient(135deg,#1668E3 0%,#7B2FF7 60%,#B32FE0 100%); }
+:root[data-theme="dark"]{ --grad-cool:linear-gradient(135deg,#3F7FE8 0%,#8E5CF6 60%,#C25FE6 100%); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --grad-cool:linear-gradient(135deg,#3F7FE8 0%,#8E5CF6 60%,#C25FE6 100%); } }
+
+body{
+  background:
+    radial-gradient(900px 420px at 110% -8%, color-mix(in srgb,var(--violet) 14%,transparent), transparent 70%),
+    radial-gradient(700px 380px at -15% 4%, color-mix(in srgb,var(--rose) 11%,transparent), transparent 70%),
+    var(--bg);
+  background-repeat:no-repeat;
+}
+.appbar{background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.brand{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;align-items:center}
+.brand h1,.brand span{grid-column:2}
+.brand::before{content:"";grid-row:1 / span 2;width:36px;height:36px;border-radius:11px;
+  box-shadow:0 4px 14px color-mix(in srgb,var(--violet) 40%,transparent);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='5.5' width='16' height='14' rx='3'/%3E%3Cpath d='M8 3.5v3.5M16 3.5v3.5M4 10h16M9 14.5l2 2 4-4'/%3E%3C/svg%3E") center/20px 20px no-repeat, var(--grad)}
+
+/* البطاقة الترحيبية */
+.hero{position:relative;overflow:hidden;margin-top:14px;border-radius:18px;padding:15px 16px 14px;color:#fff;
+  background:var(--grad-cool);box-shadow:0 10px 28px color-mix(in srgb,var(--sky) 30%,transparent)}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.12);pointer-events:none}
+.hero::before{width:170px;height:170px;inset-inline-start:-60px;top:-80px}
+.hero::after{width:110px;height:110px;inset-inline-end:-30px;bottom:-55px;background:rgba(255,255,255,.09)}
+.hero.urgent{background:var(--grad);box-shadow:0 10px 28px color-mix(in srgb,var(--rose) 36%,transparent)}
+.hero-top{position:relative;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-d);font-size:12.5px;opacity:.95}
+.hero-count{background:rgba(255,255,255,.2);border-radius:999px;padding:2px 10px;font-size:11.5px}
+.hero-next{position:relative;margin-top:8px;display:flex;flex-direction:column;gap:2px}
+.hero-next b{font-family:var(--font-d);font-size:17px;font-weight:700;line-height:1.45}
+.hero-next span{font-size:12.5px;opacity:.9}
+.hero-bar{position:relative;margin-top:11px;height:6px;border-radius:4px;background:rgba(255,255,255,.22);overflow:hidden}
+.hero-bar i{display:block;height:100%;border-radius:4px;background:#fff;transition:width .4s ease}
+.hero.urgent .hero-next b::before{content:"● ";animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* شريط التذكير في بقية التبويبات */
+.remind{position:sticky;top:64px;z-index:25;margin-top:10px;border-radius:12px;padding:9px 12px;
+  background:var(--grad);color:#fff;font-size:13px;box-shadow:0 6px 18px color-mix(in srgb,var(--rose) 30%,transparent)}
+.remind b{font-family:var(--font-d)}
+
+/* بطاقات الإحصاء بألوان متعددة */
+.tile{position:relative;overflow:hidden}
+.tile::before{content:"";position:absolute;inset-inline:0;top:0;height:4px;background:var(--grad)}
+.tiles .tile:nth-child(4n+2)::before{background:linear-gradient(90deg,var(--sky),#5AA9FF)}
+.tiles .tile:nth-child(4n+3)::before{background:linear-gradient(90deg,var(--mint),#43D58B)}
+.tiles .tile:nth-child(4n+4)::before{background:linear-gradient(90deg,#F2760B,var(--sun))}
+.tiles .tile:nth-child(4n+2) .v{color:var(--sky)}
+.tiles .tile:nth-child(4n+3) .v{color:var(--mint)}
+.tiles .tile:nth-child(4n+4) .v{color:#F2760B}
+
+/* الأفاتار والبطاقات */
+.avatar{background-image:linear-gradient(135deg,rgba(255,255,255,.32),rgba(255,255,255,0) 60%);
+  box-shadow:0 4px 12px rgba(0,0,0,.14)}
+.card{background:linear-gradient(180deg,color-mix(in srgb,var(--violet) 3.5%,var(--surface)),var(--surface) 55%)}
+.stu-card{border-top:3px solid var(--acc,var(--violet))}
+.panel{border-top:3px solid transparent;border-image:none;background:
+  linear-gradient(var(--surface),var(--surface)) padding-box,
+  linear-gradient(90deg,var(--violet),var(--rose)) border-box}
+
+/* التبويب النشط */
+.tab[aria-selected="true"]{background:color-mix(in srgb,var(--violet) 12%,transparent)}
+.tab[aria-selected="true"]::before{content:"";position:absolute;top:-7px;inset-inline:28%;height:3px;border-radius:0 0 3px 3px;background:var(--grad)}
+
+/* علامة ✓ حيّة */
+.chk[aria-checked="true"]{animation:pop .28s ease}
+@keyframes pop{0%{transform:scale(.75)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.chk[aria-checked="true"],.hero.urgent .hero-next b::before{animation:none}}
+
+/* حالات الحصة */
+.les.cancel .who{text-decoration:line-through;color:var(--ink-soft)}
+.les.cancel{opacity:.7}
+.pill.st-c{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.pill.st-p{background:color-mix(in srgb,#F2760B 16%,transparent);color:#C45F05}
+.stseg{margin-top:4px}
+.stseg button[data-st="c"][aria-pressed="true"]{color:var(--warn)}
+.stseg button[data-st="p"][aria-pressed="true"]{color:#C45F05}
+
+/* خطة المنهج */
+.plan-row{margin-top:12px}
+.plan-row .pl{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);margin-bottom:5px;font-family:var(--font-d)}
+.plan-row .pl b{color:var(--ink);font-weight:600}
+.ptrack{height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden}
+.pfill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--mint),#43D58B);transition:width .35s ease}
+.plan-list{margin-top:12px;max-height:44vh;overflow-y:auto}
+.pitem{display:flex;align-items:center;gap:12px;padding:10px 2px;border-top:1px solid var(--line-soft)}
+.pitem span{flex:1;min-width:0;font-size:14px;word-wrap:break-word}
+.pitem.on span{color:var(--ink-soft);text-decoration:line-through}
+.pitem .x{border:0;background:transparent;color:var(--ink-soft);font-size:14px;padding:6px}
+
+/* التقرير الشهري */
+.report{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(10px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}
+.report > *{max-width:560px;margin-inline:auto}
+.rp-ctrl{display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:2;background:var(--bg);padding-block:6px}
+.rp-m{flex:1;text-align:center;font-family:var(--font-d);font-weight:600}
+.rp-head{border-radius:18px;padding:18px 16px;color:#fff;background:var(--grad);margin-top:8px;position:relative;overflow:hidden}
+.rp-head::after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.12);inset-inline-end:-50px;top:-60px}
+.rp-tag{display:inline-block;background:rgba(255,255,255,.22);border-radius:999px;padding:2px 10px;font-size:11px;font-family:var(--font-d)}
+.rp-head h2{font-size:21px;margin-top:8px;color:#fff}
+.rp-head p{margin:4px 0 0;font-size:12.5px;opacity:.92}
+.rp-list > div{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line-soft)}
+.rp-list > div:first-child{border-top:0}
+.rp-list span{flex-shrink:0;width:54px;font-size:12px;color:var(--ink-soft);font-family:var(--font-d)}
+.rp-list p{margin:0;min-width:0}
+.rp-list b{font-family:var(--font-d);font-weight:600;font-size:13.5px;display:block;word-wrap:break-word}
+.rp-list small{display:block;color:var(--ink-soft);font-size:12px}
+.rp-money > div{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line-soft);font-size:13px}
+.rp-money > div:first-child{border-top:0}
+.rp-money b{font-family:var(--font-d)}
+.rp-money .owed b{color:var(--warn)} .rp-money .clear b{color:var(--mint)}
+.rp-foot{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:16px}
+.rp-actions{display:flex;gap:9px;margin-top:16px}
+body.rp-open{overflow:hidden}
+@media print{
+  body.rp-open > *:not(#report){display:none!important}
+  #report{position:static;overflow:visible;padding:0}
+  .rp-ctrl,.rp-actions,#rp-msg{display:none!important}
+  .card,.tile,.rp-head{break-inside:avoid;box-shadow:none}
+  .rp-head{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* ===== تحسينات شاشة الجوال ===== */
+button,a,[role="checkbox"]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* iOS يكبّر الصفحة عند التركيز على حقل خطه أقل من 16px */
+.field input,.field textarea,.pay-row input{font-size:16px}
+/* مساحة لمس أوسع دون تغيير الشكل */
+.chk,.iconbtn{position:relative}
+.chk::after{content:"";position:absolute;inset:-11px}
+.iconbtn::after{content:"";position:absolute;inset:-8px}
+.acts{gap:14px}
+.two>div{min-width:0}
+.field input[type="date"],.field input[type="time"]{min-height:46px;-webkit-appearance:none;appearance:none}
+.sheet{max-height:92dvh;overscroll-behavior:contain}
+.tabs{padding-inline:6px}
+.tabs-in{gap:2px}
+.tab{font-size:10.5px;min-height:50px}
+@media (max-width:380px){ .tab{font-size:10px} .tab svg{width:20px;height:20px} }
+
 .pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
 .pay-grid>div{background:var(--surface-2);border-radius:10px;padding:8px 6px;text-align:center}
 .pay-grid b{display:block;font-family:var(--font-d);font-size:14.5px;line-height:1.25;font-variant-numeric:tabular-nums}
@@ -266,6 +434,7 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
       <button class="themebtn" id="themebtn" type="button" aria-label="تبديل الوضع الليلي">◐</button>
     </div>
   </header>
+  <div class="remind" id="remind" hidden role="status"></div>
   <main id="main"></main>
 </div>
 
@@ -277,6 +446,8 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></svg>الطلاب</button>
     <button class="tab" data-tab="pay" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M16.5 14.5h1.5"/></svg>الحسابات</button>
+    <button class="tab" data-tab="prog" aria-selected="false" type="button">
+      <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/><path d="M9.5 8.5h5M9.5 12h3"/></svg>المتابعة</button>
     <button class="tab" data-tab="stats" aria-selected="false" type="button">
       <svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>الإحصائيات</button>
   </div>
@@ -326,6 +497,68 @@ input:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px soli
       <button class="btn primary" id="f-save" type="button">حفظ</button>
       <button class="btn ghost" id="f-cancel" type="button">إلغاء</button>
       <button class="btn ghost" id="f-del" type="button" hidden style="flex:1 1 100%;color:var(--warn)">حذف</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="lscrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ltitle">
+    <div class="grab"></div>
+    <h2 id="ltitle">خطة المنهج</h2>
+    <p class="sh-sub" id="lsub"></p>
+    <div id="l-sum"></div>
+    <div class="plan-list" id="l-list"></div>
+    <div class="field" style="margin-top:14px">
+      <label for="l-add">أضف دروسًا — سطر لكل درس</label>
+      <textarea id="l-add" placeholder="الوحدة 1: المادة وخواصها&#10;الوحدة 1: تركيب الذرة&#10;الوحدة 2: الروابط الكيميائية"></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="l-addbtn" type="button">إضافة</button>
+      <button class="btn ghost" id="l-close" type="button">تم</button>
+    </div>
+  </div>
+</div>
+
+<div class="report" id="report" hidden role="dialog" aria-modal="true" aria-label="التقرير الشهري">
+  <div class="rp-ctrl">
+    <button class="navbtn" id="rp-prev" type="button" aria-label="الشهر السابق">›</button>
+    <span class="rp-m" id="rp-m"></span>
+    <button class="navbtn" id="rp-next" type="button" aria-label="الشهر التالي">‹</button>
+    <button class="minibtn" id="rp-close" type="button">إغلاق</button>
+  </div>
+  <div id="rp-body"></div>
+  <div class="rp-actions">
+    <button class="btn primary" id="rp-share" type="button">مشاركة</button>
+    <button class="btn ghost" id="rp-printbtn" type="button">طباعة / PDF</button>
+  </div>
+  <p class="hint" id="rp-msg"></p>
+</div>
+
+<div class="scrim" id="gscrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="gtitle">
+    <div class="grab"></div>
+    <h2 id="gtitle">بعد الحصة</h2>
+    <p class="sh-sub" id="gsub"></p>
+    <div class="seg stseg" id="g-st" role="group" aria-label="حالة الحصة">
+      <button type="button" data-st="d" aria-pressed="true">✓ منفَّذة</button>
+      <button type="button" data-st="c" aria-pressed="false">ألغيت</button>
+      <button type="button" data-st="p" aria-pressed="false">أُجِّلت</button>
+    </div>
+    <div id="g-fields">
+    <div class="field" style="margin-top:14px">
+      <label for="g-stop">الدرس أو الموضوع الذي توقفنا عنده</label>
+      <input type="text" id="g-stop" list="g-list" placeholder="مثال: الوحدة 2 – قانون بويل، مسألة 4" autocomplete="off">
+      <datalist id="g-list"></datalist>
+    </div>
+    <div class="field">
+      <label for="g-hw">واجب أو ملاحظة للحصة القادمة (اختياري)</label>
+      <textarea id="g-hw" placeholder="حل تمارين ص 45، مراجعة المعادلات…"></textarea>
+    </div>
+    <p id="g-last" style="font-size:12px;color:var(--ink-soft);margin:0 0 10px"></p>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="g-save" type="button">حفظ</button>
+      <button class="btn ghost" id="g-later" type="button">لاحقًا</button>
     </div>
   </div>
 </div>
@@ -421,6 +654,7 @@ function longDate(s){
   const d = parse(s);
   return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
 }
+function shortDate(s){ const d = parse(s); return d.getDate() + " " + MONTHS[d.getMonth()]; }
 
 /* ============ التخزين (محلي) ============ */
 const LS = "hisas_v1";
@@ -433,6 +667,17 @@ function putLesson(l){
   save(); render();
 }
 function delLesson(id){ lessons = lessons.filter(x=>x.id!==id); save(); render(); }
+
+/* ============ خطة المنهج (محلي) ============ */
+const PLAN_LS = "hisas_plan_v1";
+let plan = {};
+function loadPlan(){ try{ plan = JSON.parse(localStorage.getItem(PLAN_LS)||"{}") || {}; }catch(e){ plan = {}; } }
+function savePlan(){ try{ localStorage.setItem(PLAN_LS, JSON.stringify(plan)); }catch(e){} }
+function planStat(n){
+  const a = plan[n] || [];
+  const d = a.filter(x=>x.d).length;
+  return {t:a.length, d, pct: a.length ? Math.round(d*100/a.length) : 0};
+}
 
 /* ============ الحسابات (محلي) ============ */
 const PAY_LS = "hisas_pay_v1";
@@ -498,7 +743,7 @@ function hits(l, ds){
   return false;
 }
 const occDone = (l, ds) => isRep(l) ? !!(l.doneOn||{})[ds] : !!l.done;
-const occOf = (l, ds) => Object.assign({}, l, {date:ds, done:occDone(l,ds), _rep:isRep(l)});
+const occOf = (l, ds) => Object.assign({}, l, {date:ds, done:occDone(l,ds), _rep:isRep(l), _p:(l.prog||{})[ds]||null, _st:(l.stat||{})[ds]||null});
 
 function lessonsOn(ds){
   return lessons.filter(l=>hits(l,ds)).map(l=>occOf(l,ds))
@@ -560,12 +805,14 @@ function render(){
   if(state.tab==="cal") renderCal();
   else if(state.tab==="stu") renderStudents();
   else if(state.tab==="pay") renderPay();
+  else if(state.tab==="prog") renderProg();
   else renderStats();
   paintBadge();
+  updateRemind();
   refreshDatalist();
 }
 function paintBadge(){
-  const n = lessonsOn(TODAY).filter(l=>!l.done).length;
+  const n = lessonsOn(TODAY).filter(l=>!l.done && !l._st).length;
   document.querySelectorAll(".tab").forEach(b=>{
     const old=b.querySelector(".badge"); if(old) old.remove();
     if(b.dataset.tab==="cal" && n>0){
@@ -598,17 +845,20 @@ function monthNav(){
 function lessonRow(l, clashes){
   const g = gradeOf(l.grade), sb = subjOf(l.subj);
   const isClash = clashes && clashes.has(l.id+"|"+l.date);
-  return `<div class="les${l.done?" done":""}">
+  return `<div class="les${l.done?" done":""}${l._st==="c"?" cancel":""}${l._st==="p"?" post":""}">
     <span class="time num"><b>${fmtT(l.from)}</b><span>${fmtT(l.to)}</span></span>
     <span class="bar" style="background:${sb.c}"></span>
     <span class="body">
       <span class="who">${esc(l.student||"بدون اسم")}</span>
       ${l.note?`<span class="note">${esc(l.note)}</span>`:""}
+      ${l._p?`<button class="stop" type="button" data-prog="${l.id}|${l.date}"><b>📍 توقفنا عند:</b> ${esc(l._p.s)}${l._p.h?`<span>واجب: ${esc(l._p.h)}</span>`:""}</button>`
+        : (l.done?`<button class="stop add" type="button" data-prog="${l.id}|${l.date}">📍 سجّل أين توقفنا</button>`:"")}
       <span class="meta">
         <span class="pill" style="background:color-mix(in srgb,${sb.c} 15%,transparent);color:${sb.c}"><i style="background:${sb.c}"></i>${sb.l}</span>
         <span class="pill" style="background:color-mix(in srgb,${g.c} 15%,transparent);color:${g.c}">${g.l}</span>
         <span class="pill">${durShort(durOf(l))}</span>
         ${l._rep?`<span class="pill rep">↻ ${esc(repLabel(l))}</span>`:""}
+        ${l._st==="c"?`<span class="pill st-c">ملغاة</span>`:""}${l._st==="p"?`<span class="pill st-p">مؤجَّلة</span>`:""}
         ${isClash?`<span class="pill clash">تعارض</span>`:""}
       </span>
     </span>
@@ -640,7 +890,7 @@ function dayPanel(ds){
 }
 
 function renderCal(){
-  let html = monthNav();
+  let html = heroHTML() + monthNav();
   if(state.mode==="month"){
     html += `<div class="wk" role="grid">`;
     DAYS_S.forEach((d,i)=> html += `<div class="wkh${(i===5||i===6)?" off":""}">${d}</div>`);
@@ -829,6 +1079,68 @@ function renderPay(){
   wire();
 }
 
+/* ---------- تبويب المتابعة ---------- */
+function progEntries(){
+  const out = [];
+  lessons.forEach(l=>{
+    Object.keys(l.prog||{}).forEach(ds=>{
+      const p = l.prog[ds]; if(!p || !p.s) return;
+      out.push({id:l.id, student:l.student||"بدون اسم", grade:l.grade, subj:l.subj, date:ds, s:p.s, h:p.h||""});
+    });
+  });
+  return out.sort((a,b)=> b.date.localeCompare(a.date));
+}
+function renderProg(){
+  const all = progEntries();
+  const by = {};
+  all.forEach(e=>{ (by[e.student] ||= []).push(e); });
+  const meta = {};
+  lessons.forEach(l=>{ const n=l.student||"بدون اسم"; if(!meta[n]) meta[n]={grade:l.grade, subj:l.subj}; });
+  const names = Object.keys(meta).sort((a,b)=>{
+    const da = by[a] ? by[a][0].date : "", db = by[b] ? by[b][0].date : "";
+    return db.localeCompare(da) || a.localeCompare(b, "ar");
+  });
+
+  let html = "";
+  if(!names.length){
+    html += `<div class="card"><p class="empty">أضف حصصًا من التقويم أولًا.<br>بعد كل حصة اضغط ✓ وسجّل أين توقفتم.</p></div>`;
+  }
+  names.forEach(n=>{
+    const es = by[n] || [], last = es[0];
+    const m = last ? {grade:last.grade, subj:last.subj} : meta[n];
+    const g = gradeOf(m.grade), sb = subjOf(m.subj);
+    const ps = planStat(n);
+    html += `<div class="card stu-card" style="--acc:${sb.c}">
+      <div class="stu-h">
+        <span class="avatar" style="background:${g.c}">${g.s}</span>
+        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${sb.l}</span></span>
+        <span class="cnt"><b class="num">${es.length}</b><span>مسجَّلة</span></span>
+      </div>
+      ${last?`<div class="prog-last" style="border-inline-start-color:${sb.c}">
+        <span class="k">آخر نقطة · ${longDate(last.date)}</span>
+        <b>${esc(last.s)}</b>
+        ${last.h?`<span class="hw">واجب: ${esc(last.h)}</span>`:""}
+        <button class="minibtn" type="button" data-prog="${last.id}|${last.date}">تعديل</button>
+      </div>`:`<p class="empty" style="padding:8px 4px">لم تُسجَّل متابعة بعد.</p>`}
+      ${es.length>1?`<div class="prog-hist">${es.slice(1,5).map(e=>`
+        <button type="button" data-prog="${e.id}|${e.date}"><span class="num">${shortDate(e.date)}</span><b>${esc(e.s)}</b></button>`).join("")}
+        ${es.length>5?`<div class="more">وأقدم منها ${es.length-5} تسجيلات.</div>`:""}</div>`:""}
+      <div class="plan-row">
+        <div class="pl"><span>خطة المنهج</span><b class="num">${ps.t?`${ps.d}/${ps.t} · ${ps.pct}٪`:"لم تُحدَّد"}</b></div>
+        <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div>
+      </div>
+      <div class="pay-row">
+        <button class="minibtn" type="button" data-plan="${esc(n)}">📚 الخطة</button>
+        <button class="minibtn solid" type="button" data-report="${esc(n)}">📄 تقرير الشهر</button>
+      </div>
+    </div>`;
+  });
+  main.innerHTML = html;
+  main.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>openPlan(b.dataset.plan));
+  main.querySelectorAll("[data-report]").forEach(b=>b.onclick=()=>openReport(b.dataset.report));
+  wire();
+}
+
 /* ---------- تبويب الإحصائيات ---------- */
 function renderStats(){
   const sel = new Date();
@@ -912,7 +1224,7 @@ function renderStats(){
 
 /* ---------- التصدير والاستيراد ---------- */
 function backupBlob(){
-  return JSON.stringify({ app:"hisas", v:1, at:new Date().toISOString(), lessons, pay }, null, 1);
+  return JSON.stringify({ app:"hisas", v:2, at:new Date().toISOString(), lessons, pay, plan }, null, 1);
 }
 function wireBackup(){
   const msg = document.getElementById("bk-msg");
@@ -958,6 +1270,14 @@ function wireBackup(){
         (data.pay.pays||[]).forEach(x=>{ if(x && x.id && !hp.has(x.id)){ pay.pays.push(x); addedPays++; } });
         savePay();
       }
+      if(data.plan && typeof data.plan === "object"){
+        Object.keys(data.plan).forEach(n=>{
+          const cur = plan[n] || [], ids = new Set(cur.map(x=>x.id));
+          (data.plan[n]||[]).forEach(x=>{ if(x && x.id && !ids.has(x.id)) cur.push(x); });
+          plan[n] = cur;
+        });
+        savePlan();
+      }
       msg.textContent = "تم استيراد " + added.length + " حصة و" + addedPays + " دفعة.";
       file.value = "";
       render();
@@ -986,6 +1306,10 @@ function wire(){
       now = !l.done;
       lessons[i] = Object.assign({}, l, {done:now});
     }
+    if(now && lessons[i].stat && lessons[i].stat[ds]){
+      const st = Object.assign({}, lessons[i].stat); delete st[ds];
+      lessons[i] = Object.assign({}, lessons[i], {stat:st});
+    }
     save();
     /* تحديث موضعي: أسرع بكثير من إعادة بناء الشاشة */
     const row = b.closest(".les");
@@ -994,8 +1318,263 @@ function wire(){
       b.setAttribute("aria-checked", now ? "true" : "false");
       paintBadge();
     } else render();
+    /* بعد تعليم الحصة كمنفَّذة: اسأل أين توقفنا */
+    if(now) openProg(id, ds);
+  });
+  main.querySelectorAll("[data-prog]").forEach(b=>b.onclick=()=>{
+    const [id,ds] = b.dataset.prog.split("|");
+    openProg(id, ds);
   });
 }
+
+/* ============ نافذة «بعد الحصة» ============ */
+const gscrim = document.getElementById("gscrim");
+let progFor = null, progSt = "d";
+function lastStopOf(student, beforeDs){
+  return progEntries().find(e=>e.student===student && e.date<beforeDs) || null;
+}
+function isDoneAt(l, ds){ return isRep(l) ? !!(l.doneOn||{})[ds] : !!l.done; }
+function withDone(l, ds, v){
+  if(isRep(l)){
+    const m = Object.assign({}, l.doneOn||{});
+    if(v) m[ds] = true; else delete m[ds];
+    return Object.assign({}, l, {doneOn:m});
+  }
+  return Object.assign({}, l, {done:v});
+}
+function paintSt(){
+  document.querySelectorAll("#g-st [data-st]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.st===progSt));
+  document.getElementById("g-fields").hidden = progSt !== "d";
+}
+document.querySelectorAll("#g-st [data-st]").forEach(b=>b.onclick=()=>{ progSt = b.dataset.st; paintSt(); });
+
+function openProg(id, ds){
+  const l = lessons.find(x=>x.id===id); if(!l) return;
+  progFor = {id, ds};
+  const who = l.student||"بدون اسم";
+  const cur = (l.prog||{})[ds] || {};
+  const st = (l.stat||{})[ds];
+  progSt = st ? st : "d";
+  document.getElementById("gsub").textContent = who + " · " + subjOf(l.subj).l + " · " + longDate(ds);
+  document.getElementById("g-stop").value = cur.s || "";
+  document.getElementById("g-hw").value = cur.h || "";
+  const prev = lastStopOf(who, ds);
+  document.getElementById("g-last").textContent = prev ? ("المرة السابقة: " + prev.s) : "";
+  const seen = [...new Set(progEntries().filter(e=>e.student===who).map(e=>e.s))].slice(0,12);
+  document.getElementById("g-list").innerHTML = seen.map(v=>`<option value="${esc(v)}">`).join("");
+  paintSt();
+  gscrim.hidden = false;
+}
+function closeProg(){ gscrim.hidden = true; progFor = null; render(); }
+document.getElementById("g-later").onclick = closeProg;
+gscrim.onclick = e => { if(e.target===gscrim) closeProg(); };
+document.getElementById("g-save").onclick = ()=>{
+  if(!progFor) return;
+  const {id, ds} = progFor;
+  const i = lessons.findIndex(x=>x.id===id); if(i<0) return closeProg();
+  let l = lessons[i];
+  const prog = Object.assign({}, l.prog||{});
+  const stat = Object.assign({}, l.stat||{});
+  if(progSt === "d"){
+    l = withDone(l, ds, true);
+    delete stat[ds];
+    const sVal = document.getElementById("g-stop").value.trim();
+    const hVal = document.getElementById("g-hw").value.trim();
+    if(sVal) prog[ds] = {s:sVal, h:hVal}; else delete prog[ds];
+  } else {
+    l = withDone(l, ds, false);
+    stat[ds] = progSt;
+    delete prog[ds];
+  }
+  lessons[i] = Object.assign({}, l, {prog, stat});
+  save();
+  closeProg();
+};
+
+/* ============ نافذة خطة المنهج ============ */
+const lscrim = document.getElementById("lscrim");
+let planFor = null;
+function paintPlan(){
+  const a = plan[planFor] || [], ps = planStat(planFor);
+  document.getElementById("l-sum").innerHTML = `<div class="plan-row" style="margin-top:0">
+    <div class="pl"><span>المنجز</span><b class="num">${ps.t?`${ps.d}/${ps.t} · ${ps.pct}٪`:"—"}</b></div>
+    <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div></div>`;
+  document.getElementById("l-list").innerHTML = a.length ? a.map(x=>`
+    <div class="pitem${x.d?" on":""}">
+      <button type="button" class="chk" role="checkbox" aria-checked="${x.d?"true":"false"}" data-pt="${x.id}" aria-label="تم">✓</button>
+      <span>${esc(x.t)}</span>
+      <button class="x" type="button" data-pdel="${x.id}" aria-label="حذف">✕</button>
+    </div>`).join("") : `<p class="empty">لا دروس بعد. أضفها بالأسفل، سطرًا لكل درس.</p>`;
+}
+function openPlan(n){
+  planFor = n;
+  document.getElementById("lsub").textContent = n;
+  document.getElementById("l-add").value = "";
+  paintPlan();
+  lscrim.hidden = false;
+}
+function closePlan(){ lscrim.hidden = true; planFor = null; render(); }
+document.getElementById("l-close").onclick = closePlan;
+lscrim.onclick = e => { if(e.target===lscrim) closePlan(); };
+document.getElementById("l-list").onclick = e => {
+  const t = e.target.closest("[data-pt]"), d = e.target.closest("[data-pdel]");
+  const a = plan[planFor] || [];
+  if(t){ const x = a.find(y=>y.id===t.dataset.pt); if(x){ x.d = !x.d; savePlan(); paintPlan(); } }
+  if(d){ plan[planFor] = a.filter(y=>y.id!==d.dataset.pdel); savePlan(); paintPlan(); }
+};
+document.getElementById("l-addbtn").onclick = ()=>{
+  const lines = document.getElementById("l-add").value.split("\n").map(x=>x.trim()).filter(Boolean);
+  if(!lines.length) return;
+  const a = plan[planFor] || [];
+  lines.forEach((t,k)=> a.push({id:"t"+Date.now().toString(36)+k+Math.random().toString(36).slice(2,5), t, d:false}));
+  plan[planFor] = a;
+  savePlan();
+  document.getElementById("l-add").value = "";
+  paintPlan();
+};
+
+/* ============ التقرير الشهري ============ */
+const reportEl = document.getElementById("report");
+let rp = null;
+function reportData(){
+  const {n, y, m} = rp;
+  const from = y+"-"+pad(m+1)+"-01";
+  const to = y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
+  const occ = expand(from, to).filter(l=>(l.student||"بدون اسم")===n);
+  const done = occ.filter(l=>l.done);
+  const canc = occ.filter(l=>l._st==="c");
+  const post = occ.filter(l=>l._st==="p");
+  const upcoming = occ.filter(l=>!l.done && !l._st && l.date>=TODAY);
+  const minsDone = done.reduce((t,l)=>t+durOf(l),0);
+  const topics = done.filter(l=>l._p).sort((a,b)=>a.date.localeCompare(b.date));
+  const rate = rateOf(n);
+  const paidM = pay.pays.filter(p=>p.student===n && p.date>=from && p.date<=to).reduce((t,p)=>t+(Number(p.amount)||0),0);
+  const bk = payBook()[n];
+  const ref = occ[0] || lessons.find(l=>(l.student||"بدون اسم")===n) || {};
+  const subs = [...new Set((occ.length?occ:[ref]).map(l=>subjOf(l.subj).l))];
+  return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, topics, rate,
+          dueM:done.length*rate, paidM, rest: bk ? bk.rest : 0, subs, g:gradeOf(ref.grade), ps:planStat(n)};
+}
+function paintReport(){
+  const d = reportData();
+  document.getElementById("rp-m").textContent = d.label;
+  document.getElementById("rp-msg").textContent = "";
+  document.getElementById("rp-body").innerHTML = `<article class="rp">
+    <header class="rp-head">
+      <span class="rp-tag">تقرير شهري</span>
+      <h2>${esc(d.n)}</h2>
+      <p>${d.g.l} · ${d.subs.join(" و")} · ${d.label}</p>
+    </header>
+    <div class="tiles">
+      <div class="tile"><div class="v num">${d.done.length}</div><div class="k">حصص منفَّذة</div></div>
+      <div class="tile"><div class="v num" style="font-size:20px">${d.minsDone?durShort(d.minsDone):"0"}</div><div class="k">مدة التدريس</div></div>
+      <div class="tile"><div class="v num">${d.canc.length}</div><div class="k">ملغاة</div></div>
+      <div class="tile"><div class="v num">${d.post.length}</div><div class="k">مؤجَّلة</div></div>
+    </div>
+    <section class="card"><h3>ما تم شرحه</h3>
+      ${d.topics.length?`<div class="rp-list">${d.topics.map(l=>`
+        <div><span class="num">${shortDate(l.date)}</span><p><b>${esc(l._p.s)}</b>${l._p.h?`<small>واجب: ${esc(l._p.h)}</small>`:""}</p></div>`).join("")}</div>`
+        :`<p class="empty">لم تُسجَّل موضوعات في هذا الشهر.</p>`}
+    </section>
+    ${d.ps.t?`<section class="card"><h3>خطة المنهج</h3>
+      <div class="plan-row" style="margin-top:0"><div class="pl"><span>المنجز من الخطة</span><b class="num">${d.ps.d}/${d.ps.t} · ${d.ps.pct}٪</b></div>
+      <div class="ptrack"><div class="pfill" style="width:${d.ps.pct}%"></div></div></div></section>`:""}
+    ${d.rate||d.paidM?`<section class="card"><h3>الحساب (د.ك)</h3>
+      <div class="rp-money">
+        <div><span>سعر الحصة</span><b class="num">${kd(d.rate)}</b></div>
+        <div><span>مستحق هذا الشهر</span><b class="num">${kd(d.dueM)}</b></div>
+        <div><span>مدفوع هذا الشهر</span><b class="num">${kd(d.paidM)}</b></div>
+        <div class="${d.rest>0.0005?"owed":"clear"}"><span>المتبقي الإجمالي</span><b class="num">${kd(d.rest)}</b></div>
+      </div></section>`:""}
+    ${d.upcoming.length?`<p class="hint" style="margin-top:12px">متبقٍّ في هذا الشهر: <b class="num">${d.upcoming.length}</b> حصة مجدولة.</p>`:""}
+    <p class="rp-foot">أُعدّ في ${longDate(TODAY)} · جدول الحصص الخارجية</p>
+  </article>`;
+}
+function reportText(){
+  const d = reportData();
+  const L = [`تقرير ${d.label} — ${d.n}`, `${d.g.l} · ${d.subs.join(" و")}`, ""];
+  L.push(`الحصص المنفَّذة: ${d.done.length}${d.minsDone?` (${durShort(d.minsDone)})`:""}`);
+  if(d.canc.length) L.push(`الملغاة: ${d.canc.length}`);
+  if(d.post.length) L.push(`المؤجَّلة: ${d.post.length}`);
+  if(d.topics.length){ L.push("", "ما تم شرحه:"); d.topics.forEach(l=>L.push(`• ${shortDate(l.date)}: ${l._p.s}${l._p.h?` — واجب: ${l._p.h}`:""}`)); }
+  if(d.ps.t) L.push("", `خطة المنهج: ${d.ps.d} من ${d.ps.t} (${d.ps.pct}٪)`);
+  if(d.rate||d.paidM) L.push("", `مستحق هذا الشهر: ${kd(d.dueM)} د.ك`, `مدفوع هذا الشهر: ${kd(d.paidM)} د.ك`, `المتبقي الإجمالي: ${kd(d.rest)} د.ك`);
+  return L.join("\n");
+}
+function openReport(n){
+  const t = new Date();
+  rp = {n, y:t.getFullYear(), m:t.getMonth()};
+  paintReport();
+  reportEl.hidden = false;
+  reportEl.scrollTop = 0;
+  document.body.classList.add("rp-open");
+}
+function closeReport(){ reportEl.hidden = true; document.body.classList.remove("rp-open"); rp = null; }
+document.getElementById("rp-close").onclick = closeReport;
+document.getElementById("rp-prev").onclick = ()=>{ rp.m--; if(rp.m<0){ rp.m=11; rp.y--; } paintReport(); };
+document.getElementById("rp-next").onclick = ()=>{ rp.m++; if(rp.m>11){ rp.m=0; rp.y++; } paintReport(); };
+document.getElementById("rp-printbtn").onclick = ()=>{ try{ window.print(); }catch(e){} };
+document.getElementById("rp-share").onclick = async ()=>{
+  const text = reportText(), msg = document.getElementById("rp-msg");
+  try{
+    if(navigator.share){ await navigator.share({title:"التقرير الشهري", text}); return; }
+    await navigator.clipboard.writeText(text);
+    msg.textContent = "نُسخ التقرير. الصقه في واتساب أو أي تطبيق.";
+  }catch(e){
+    if(e && e.name==="AbortError") return;
+    msg.textContent = "تعذّرت المشاركة في هذا المتصفح.";
+  }
+};
+
+/* ============ التذكير قبل الحصة ============ */
+const nowMin = () => { const d = new Date(); return d.getHours()*60 + d.getMinutes(); };
+const inTxt = m => { if(m<60) return m + " د"; const h = Math.floor(m/60), r = m%60; return h + " س" + (r ? " " + r + " د" : ""); };
+function nextInfo(){
+  const nm = nowMin();
+  const today = lessonsOn(TODAY).filter(l=>!l.done && !l._st);
+  const cur = today.find(l=>mins(l.from)<=nm && mins(l.to)>nm);
+  if(cur) return {l:cur, kind:"now", left:mins(cur.to)-nm};
+  const nx = today.find(l=>mins(l.from)>nm);
+  if(nx) return {l:nx, kind:"soon", left:mins(nx.from)-nm};
+  const t = lessonsOn(key(addDays(new Date(),1))).filter(l=>!l._st)[0];
+  return t ? {l:t, kind:"tmr"} : null;
+}
+function heroHTML(){
+  const h = new Date().getHours();
+  const hi = h < 12 ? "صباح الخير" : "مساء الخير";
+  const list = lessonsOn(TODAY).filter(l=>!l._st);
+  const doneN = list.filter(l=>l.done).length;
+  const nx = nextInfo();
+  const who = l => esc(l.student||"بدون اسم");
+  let line;
+  if(!nx) line = `<b>لا حصص قادمة</b><span>لا شيء مجدول لليوم أو الغد.</span>`;
+  else if(nx.kind==="now") line = `<b>الآن: ${who(nx.l)}</b><span>${subjOf(nx.l.subj).l} · تنتهي بعد ${inTxt(nx.left)}</span>`;
+  else if(nx.kind==="soon") line = `<b>التالية: ${who(nx.l)} · ${fmtT(nx.l.from)}</b><span>${subjOf(nx.l.subj).l} · بعد ${inTxt(nx.left)}</span>`;
+  else line = `<b>غدًا: ${who(nx.l)} · ${fmtT(nx.l.from)}</b><span>${subjOf(nx.l.subj).l} · أول حصة غدًا</span>`;
+  const urgent = nx && (nx.kind==="now" || (nx.kind==="soon" && nx.left<=30));
+  return `<section class="hero${urgent?" urgent":""}" id="hero">
+    <div class="hero-top"><span>${hi}</span>${list.length?`<span class="hero-count num">${doneN} / ${list.length} اليوم</span>`:""}</div>
+    <div class="hero-next">${line}</div>
+    ${list.length?`<div class="hero-bar"><i style="width:${Math.round(doneN*100/list.length)}%"></i></div>`:""}
+  </section>`;
+}
+function updateRemind(){
+  const el = document.getElementById("remind"); if(!el) return;
+  const nx = nextInfo();
+  const show = state.tab!=="cal" && nx && (nx.kind==="now" || (nx.kind==="soon" && nx.left<=30));
+  el.hidden = !show;
+  if(show) el.innerHTML = nx.kind==="now"
+    ? `⏱ الآن: <b>${esc(nx.l.student||"بدون اسم")}</b> · تنتهي بعد ${inTxt(nx.left)}`
+    : `🔔 بعد ${inTxt(nx.left)}: <b>${esc(nx.l.student||"بدون اسم")}</b> · ${fmtT(nx.l.from)}`;
+}
+function tick(){
+  updateRemind();
+  const h = document.getElementById("hero");
+  if(h) h.outerHTML = heroHTML();
+  paintBadge();
+}
+setInterval(tick, 60000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) tick(); });
 
 /* ============ نافذة الدفعة ============ */
 const pscrim = document.getElementById("pscrim");
@@ -1142,6 +1721,8 @@ document.getElementById("f-save").onclick = ()=>{
     rep,
     doneOn: rep.t==="none" ? {} : (old && old.doneOn ? old.doneOn : {}),
     skip:   rep.t==="none" ? [] : (old && old.skip   ? old.skip   : []),
+    prog:   old && old.prog ? old.prog : {},
+    stat:   old && old.stat ? old.stat : {},
     ts: old ? (old.ts||Date.now()) : Date.now()
   };
   state.sel = date;
@@ -1188,6 +1769,7 @@ try{ const th=localStorage.getItem("hisas_theme"); if(th) document.documentEleme
 
 load();
 loadPay();
+loadPlan();
 render();
 </script>
 
