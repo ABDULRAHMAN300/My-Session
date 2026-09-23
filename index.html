@@ -395,7 +395,32 @@ body.rp-open{overflow:hidden}
 /* ===== تحسينات شاشة الجوال ===== */
 button,a,[role="checkbox"]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 /* iOS يكبّر الصفحة عند التركيز على حقل خطه أقل من 16px */
-.field input,.field textarea,.pay-row input{font-size:16px}
+/* iOS يكبّر الصفحة تلقائيًا عند التركيز على أي حقل خطه أقل من 16px */
+input,textarea,select,.field input,.field textarea,.pay-fields input{font-size:16px}
+/* ضبط المقاس على عرض الشاشة ومنع التمرير الأفقي */
+html,body{max-width:100%;overflow-x:hidden}
+*{min-width:0}
+img,svg,canvas{max-width:100%;height:auto}
+.wrap,main,.card,.sheet,.hero,.remind,.bkbar{max-width:100%}
+.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+.opt{min-height:38px}
+/* خانات الحساب */
+.pay-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;align-items:end}
+.pay-fields label{font-size:11.5px;color:var(--ink-soft);font-family:var(--font-d);display:flex;flex-direction:column;gap:5px}
+.pay-fields input{width:100%;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;
+  padding:9px 8px;text-align:center;font-variant-numeric:tabular-nums}
+.pay-fields .rest{background:var(--surface-2);border-radius:10px;padding:8px 6px;text-align:center}
+.pay-fields .rest span{display:block;font-size:11.5px;color:var(--ink-soft)}
+.pay-fields .rest b{font-family:var(--font-d);font-size:15px}
+.pay-fields .rest.owed b{color:var(--warn)}
+.pay-fields .rest.clear b{color:var(--chem)}
+/* قائمة الدروس */
+.g-hint{font-size:12.5px;color:var(--ink-soft);margin:14px 0 4px}
+.pitem small{flex-shrink:0;font-size:11px;color:var(--ink-soft)}
+.pitem.next{background:color-mix(in srgb,var(--violet) 7%,transparent);border-radius:10px}
+.covrow{display:flex;gap:10px;align-items:baseline;padding:7px 2px;border-top:1px solid var(--line-soft);font-size:13px}
+.covrow span{flex-shrink:0;width:54px;color:var(--ink-soft);font-size:11.5px}
+.covrow b{font-weight:500;min-width:0;word-wrap:break-word}
 /* مساحة لمس أوسع دون تغيير الشكل */
 .chk,.iconbtn{position:relative}
 .chk::after{content:"";position:absolute;inset:-11px}
@@ -554,41 +579,12 @@ button,a,[role="checkbox"]{-webkit-tap-highlight-color:transparent;touch-action:
       <button type="button" data-st="p" aria-pressed="false">أُجِّلت</button>
     </div>
     <div id="g-fields">
-    <div class="field" style="margin-top:14px">
-      <label for="g-stop">الدرس أو الموضوع الذي توقفنا عنده</label>
-      <input type="text" id="g-stop" list="g-list" placeholder="مثال: الوحدة 2 – قانون بويل، مسألة 4" autocomplete="off">
-      <datalist id="g-list"></datalist>
-    </div>
-    <div class="field">
-      <label for="g-hw">واجب أو ملاحظة للحصة القادمة (اختياري)</label>
-      <textarea id="g-hw" placeholder="حل تمارين ص 45، مراجعة المعادلات…"></textarea>
-    </div>
-    <p id="g-last" style="font-size:12px;color:var(--ink-soft);margin:0 0 10px"></p>
+      <p class="g-hint">علّم الدروس التي شرحتها في هذه الحصة:</p>
+      <div class="plan-list" id="g-list"></div>
     </div>
     <div class="sheet-actions">
       <button class="btn primary" id="g-save" type="button">حفظ</button>
       <button class="btn ghost" id="g-later" type="button">لاحقًا</button>
-    </div>
-  </div>
-</div>
-
-<div class="scrim" id="pscrim" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ptitle" style="max-width:460px">
-    <div class="grab"></div>
-    <h2 id="ptitle">تسجيل دفعة</h2>
-    <p class="sh-sub" id="psub"></p>
-    <div class="field two">
-      <div><label for="p-amount">المبلغ (د.ك)</label><input type="number" id="p-amount" inputmode="decimal" min="0" step="0.5"></div>
-      <div><label for="p-date">التاريخ</label><input type="date" id="p-date"></div>
-    </div>
-    <div class="field">
-      <label for="p-note">ملاحظة (اختياري)</label>
-      <input type="text" id="p-note" placeholder="نقدًا، تحويل…">
-    </div>
-    <p id="p-msg" hidden style="font-size:12.5px;color:var(--warn);margin:0 0 4px"></p>
-    <div class="sheet-actions">
-      <button class="btn primary" id="p-save" type="button">حفظ</button>
-      <button class="btn ghost" id="p-cancel" type="button">إلغاء</button>
     </div>
   </div>
 </div>
@@ -680,51 +676,416 @@ function putLesson(l){
 }
 function delLesson(id){ lessons = lessons.filter(x=>x.id!==id); save(); render(); }
 
-/* ============ خطة المنهج (محلي) ============ */
-const PLAN_LS = "hisas_plan_v1";
-let plan = {};
-function loadPlan(){ try{ plan = JSON.parse(localStorage.getItem(PLAN_LS)||"{}") || {}; }catch(e){ plan = {}; } }
-function savePlan(){ try{ localStorage.setItem(PLAN_LS, JSON.stringify(plan)); }catch(e){} }
-function planStat(n){
-  const a = plan[n] || [];
-  const d = a.filter(x=>x.d).length;
-  return {t:a.length, d, pct: a.length ? Math.round(d*100/a.length) : 0};
-}
-
-/* ============ الحسابات (محلي) ============ */
-const PAY_LS = "hisas_pay_v1";
-let pay = { price:0, rates:{}, pays:[] };
-function loadPay(){
-  try{
-    const o = JSON.parse(localStorage.getItem(PAY_LS)||"{}");
-    pay = { price:Number(o.price)||0, rates:o.rates||{}, pays:Array.isArray(o.pays)?o.pays:[] };
-  }catch(e){ pay = { price:0, rates:{}, pays:[] }; }
-}
-function savePay(){ try{ localStorage.setItem(PAY_LS, JSON.stringify(pay)); }catch(e){} }
-const rateOf = n => { const r = Number(pay.rates[n]); return r>0 ? r : Number(pay.price)||0; };
-const kd = n => (Math.round((Number(n)||0)*1000)/1000).toFixed(3);
-const firstDate = () => {
-  const ds = lessons.map(l=>l.date).filter(Boolean).sort();
-  return ds.length ? ds[0] : TODAY;
+/* خطط توزيع منهج الكيمياء — وزارة التربية، الكويت 2026/2027 (الفصل الأول) */
+const DEFAULT_LIB = {
+ "chem-10": [
+  {
+   "id": "c10-01",
+   "t": "علم الكيمياء"
+  },
+  {
+   "id": "c10-02",
+   "t": "تطوّر النماذج الذرية"
+  },
+  {
+   "id": "c10-03",
+   "t": "النموذج الميكانيكي الموجي"
+  },
+  {
+   "id": "c10-04",
+   "t": "أعداد الكم"
+  },
+  {
+   "id": "c10-05",
+   "t": "قواعد الترتيب الإلكتروني في الذرات"
+  },
+  {
+   "id": "c10-06",
+   "t": "تطبيقات على قواعد الترتيب الإلكتروني"
+  },
+  {
+   "id": "c10-07",
+   "t": "تطوّر الجدول الدوري"
+  },
+  {
+   "id": "c10-08",
+   "t": "تقسيم العناصر"
+  },
+  {
+   "id": "c10-09",
+   "t": "الميول الدورية (التدرج في الخواص)"
+  },
+  {
+   "id": "c10-10",
+   "t": "الترتيب الإلكتروني وإلكترونات التكافؤ"
+  },
+  {
+   "id": "c10-11",
+   "t": "قاعدة الثمانية"
+  },
+  {
+   "id": "c10-12",
+   "t": "الرابطة الأيونية"
+  },
+  {
+   "id": "c10-13",
+   "t": "خواص المركبات الأيونية"
+  },
+  {
+   "id": "c10-14",
+   "t": "الروابط التساهمية"
+  },
+  {
+   "id": "c10-15",
+   "t": "خواص المركبات التساهمية"
+  },
+  {
+   "id": "c10-16",
+   "t": "الرابطة التناسقية"
+  }
+ ],
+ "chem-11": [
+  {
+   "id": "c11-01",
+   "t": "الأفلاك الجزيئية"
+  },
+  {
+   "id": "c11-02",
+   "t": "الأفلاك المهجنة"
+  },
+  {
+   "id": "c11-03",
+   "t": "تطبيقات على التداخل والتهجين"
+  },
+  {
+   "id": "c11-04",
+   "t": "الماء كمذيب قوي"
+  },
+  {
+   "id": "c11-05",
+   "t": "المحاليل المائية"
+  },
+  {
+   "id": "c11-06",
+   "t": "الأنظمة المائية غير المتجانسة (معلَّق)"
+  },
+  {
+   "id": "c11-07",
+   "t": "التفاعلات في المحاليل المائية (معلَّق)"
+  },
+  {
+   "id": "c11-08",
+   "t": "العوامل المؤثرة على الذوبانية في المحاليل"
+  },
+  {
+   "id": "c11-09",
+   "t": "تركيب المحاليل"
+  },
+  {
+   "id": "c11-10",
+   "t": "الخواص المجمعة للمحاليل"
+  },
+  {
+   "id": "c11-11",
+   "t": "التغيرات الحرارية"
+  },
+  {
+   "id": "c11-12",
+   "t": "قانون هس"
+  }
+ ],
+ "chem-12": [
+  {
+   "id": "c12-01",
+   "t": "خواص الغازات"
+  },
+  {
+   "id": "c12-02",
+   "t": "العوامل التي تؤثر في ضغط الغاز"
+  },
+  {
+   "id": "c12-03",
+   "t": "قوانين الغازات"
+  },
+  {
+   "id": "c12-04",
+   "t": "الغازات المثالية"
+  },
+  {
+   "id": "c12-05",
+   "t": "الجسيمات الغازية: مخاليطها وحركتها"
+  },
+  {
+   "id": "c12-06",
+   "t": "سرعة التفاعل"
+  },
+  {
+   "id": "c12-07",
+   "t": "التفاعلات العكوسة والاتزان الكيميائي"
+  },
+  {
+   "id": "c12-08",
+   "t": "الانتروبي: تحديد إمكانية حدوث تفاعل (معلَّق)"
+  },
+  {
+   "id": "c12-09",
+   "t": "وصف الأحماض والقواعد"
+  },
+  {
+   "id": "c12-10",
+   "t": "تسمية الأحماض والقواعد"
+  },
+  {
+   "id": "c12-11",
+   "t": "كاتيونات الهيدروجين والحموضة"
+  },
+  {
+   "id": "c12-12",
+   "t": "قوة الأحماض والقواعد"
+  }
+ ],
+ "phys-10": [
+  {
+   "id": "p10-01",
+   "t": "علم الفيزياء"
+  },
+  {
+   "id": "p10-02",
+   "t": "الكميات الفيزيائية"
+  },
+  {
+   "id": "p10-03",
+   "t": "الكميات الفيزيائية العددية والمتجهة"
+  },
+  {
+   "id": "p10-04",
+   "t": "معادلات الحركة المتسارعة بانتظام في خط مستقيم"
+  },
+  {
+   "id": "p10-05",
+   "t": "السقوط الحر"
+  },
+  {
+   "id": "p10-06",
+   "t": "خصائص المتجهات"
+  },
+  {
+   "id": "p10-07",
+   "t": "جمع المتجهات وتحليلها"
+  },
+  {
+   "id": "p10-08",
+   "t": "ضرب المتجهات"
+  },
+  {
+   "id": "p10-09",
+   "t": "حركة المقذوفات"
+  }
+ ],
+ "phys-11": [
+  {
+   "id": "p11-01",
+   "t": "الكميات العددية والكميات المتجهة"
+  },
+  {
+   "id": "p11-02",
+   "t": "تحليل المتجهات"
+  },
+  {
+   "id": "p11-03",
+   "t": "حركة القذيفة"
+  },
+  {
+   "id": "p11-04",
+   "t": "وصف الحركة الدائرية"
+  },
+  {
+   "id": "p11-05",
+   "t": "القوة الجاذبة المركزية"
+  },
+  {
+   "id": "p11-06",
+   "t": "مركز الثقل"
+  },
+  {
+   "id": "p11-07",
+   "t": "مركز الكتلة"
+  },
+  {
+   "id": "p11-08",
+   "t": "تحديد موضع مركز الكتلة أو مركز الثقل"
+  }
+ ],
+ "phys-12": [
+  {
+   "id": "p12-01",
+   "t": "الشغل"
+  },
+  {
+   "id": "p12-02",
+   "t": "الشغل والطاقة"
+  },
+  {
+   "id": "p12-03",
+   "t": "حفظ بقاء الطاقة"
+  },
+  {
+   "id": "p12-04",
+   "t": "عزم الدوران (عزم القوة)"
+  },
+  {
+   "id": "p12-05",
+   "t": "القصور الذاتي الدوراني"
+  },
+  {
+   "id": "p12-06",
+   "t": "كمية الحركة والدفع"
+  },
+  {
+   "id": "p12-07",
+   "t": "حفظ (بقاء) كمية الحركة والتصادمات"
+  }
+ ],
+ "sci-10": [
+  {
+   "id": "s10-01",
+   "t": "مدخل إلى علم الفيزياء"
+  },
+  {
+   "id": "s10-02",
+   "t": "الكميات الفيزيائية"
+  },
+  {
+   "id": "s10-03",
+   "t": "الكميات الفيزيائية العددية والمتجهة"
+  },
+  {
+   "id": "s10-04",
+   "t": "معادلات الحركة المتسارعة بانتظام في خط مستقيم"
+  },
+  {
+   "id": "s10-05",
+   "t": "السقوط الحر"
+  },
+  {
+   "id": "s10-06",
+   "t": "علم الكيمياء"
+  },
+  {
+   "id": "s10-07",
+   "t": "تطور النماذج الذرية"
+  },
+  {
+   "id": "s10-08",
+   "t": "أعداد الكم"
+  },
+  {
+   "id": "s10-09",
+   "t": "قواعد الترتيب الإلكتروني في الذرات"
+  },
+  {
+   "id": "s10-10",
+   "t": "تطبيقات على قواعد الترتيب الإلكتروني"
+  },
+  {
+   "id": "s10-11",
+   "t": "تطور الجدول الدوري"
+  },
+  {
+   "id": "s10-12",
+   "t": "الميول الدورية (التدرج في الخواص)"
+  },
+  {
+   "id": "s10-13",
+   "t": "الترتيب الإلكتروني"
+  },
+  {
+   "id": "s10-14",
+   "t": "الرابطة الأيونية"
+  },
+  {
+   "id": "s10-15",
+   "t": "خواص المركبات الأيونية"
+  },
+  {
+   "id": "s10-16",
+   "t": "الرابطة التساهمية"
+  }
+ ]
 };
-/* الحصص المنفَّذة حتى اليوم */
-const doneUpToToday = () => expand(firstDate(), TODAY).filter(l=>l.done);
-function payBook(){
-  const done = doneUpToToday();
-  const book = {};
-  const touch = n => (book[n] ||= {n:0, due:0, paid:0, items:[], grade:null, subjs:new Set()});
-  done.forEach(l=>{
-    const n = l.student || "بدون اسم";
-    const b = touch(n); b.n++; b.grade = b.grade || l.grade; b.subjs.add(l.subj);
-  });
-  pay.pays.forEach(p=>{ const b = touch(p.student); b.paid += Number(p.amount)||0; b.items.push(p); });
-  Object.keys(book).forEach(n=>{
-    book[n].due = book[n].n * rateOf(n);
-    book[n].rest = book[n].due - book[n].paid;
-    book[n].items.sort((a,b)=> b.date.localeCompare(a.date));
-  });
-  return book;
+
+/* ============ مكتبة الدروس والتقدم (محلي) ============ */
+const LIB_LS  = "hisas_lib_v1";
+const LIB_VER_LS = "hisas_lib_ver", LIB_VER = "2"; // ارفع الرقم عند تحديث الخطط الجاهزة    // دروس كل (مادة + صف) مشتركة
+const PROG_LS = "hisas_prog_v1";   // ما أنجزه كل طالب: {اسم: {رقم الدرس: التاريخ}}
+const MONEY_LS = "hisas_money_v1"; // {due:{اسم:مبلغ}, paid:{اسم:مبلغ}}
+let lib = {}, prog = {}, money = {due:{}, paid:{}};
+
+const libKey = (subj, grade) => subj + "-" + grade;
+function loadLib(){
+  try{ lib = JSON.parse(localStorage.getItem(LIB_LS)||"null") || {}; }catch(e){ lib = {}; }
+  if(typeof DEFAULT_LIB === "object"){
+    let ver = null;
+    try{ ver = localStorage.getItem(LIB_VER_LS); }catch(e){}
+    const fresh = ver !== LIB_VER;   // نسخة خطط جديدة: تُستبدل الخطط الجاهزة
+    let add = false;
+    Object.keys(DEFAULT_LIB).forEach(k=>{
+      if(fresh || !lib[k] || !lib[k].length){ lib[k] = JSON.parse(JSON.stringify(DEFAULT_LIB[k])); add = true; }
+    });
+    if(add){ saveLib(); try{ localStorage.setItem(LIB_VER_LS, LIB_VER); }catch(e){} }
+  }
+  try{ prog = JSON.parse(localStorage.getItem(PROG_LS)||"{}") || {}; }catch(e){ prog = {}; }
 }
+function saveLib(){ try{ localStorage.setItem(LIB_LS, JSON.stringify(lib)); }catch(e){} }
+function saveProg(){ try{ localStorage.setItem(PROG_LS, JSON.stringify(prog)); }catch(e){} }
+
+function loadMoney(){
+  try{
+    const m = JSON.parse(localStorage.getItem(MONEY_LS)||"null");
+    if(m){ money = {due:m.due||{}, paid:m.paid||{}}; return; }
+  }catch(e){}
+  /* ترحيل من النسخة السابقة: تُجمع الدفعات القديمة في خانة المدفوع */
+  try{
+    const old = JSON.parse(localStorage.getItem("hisas_pay_v1")||"null");
+    if(old && Array.isArray(old.pays)){
+      const paid = {};
+      old.pays.forEach(x=>{ if(x && x.student) paid[x.student] = (paid[x.student]||0) + (Number(x.amount)||0); });
+      money = {due:{}, paid};
+      saveMoney();
+    }
+  }catch(e){}
+}
+function saveMoney(){ try{ localStorage.setItem(MONEY_LS, JSON.stringify(money)); }catch(e){} }
+
+const kd = n => (Math.round((Number(n)||0)*1000)/1000).toFixed(3);
+const firstDate = () => { const d = lessons.map(l=>l.date).filter(Boolean).sort(); return d.length ? d[0] : TODAY; };
+const doneUpToToday = () => expand(firstDate(), TODAY).filter(l=>l.done);
+
+/* بيانات الطالب: آخر مادة وصف سُجّلا له */
+function studentMeta(n){
+  const ls = lessons.filter(l=>(l.student||"بدون اسم")===n).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const l = ls[0] || {};
+  return {subj:l.subj||"chem", grade:l.grade||"10"};
+}
+function allStudents(){
+  const out = [];
+  lessons.forEach(l=>{ const n = l.student||"بدون اسم"; if(!out.includes(n)) out.push(n); });
+  return out;
+}
+function libOf(n){ const m = studentMeta(n); return lib[libKey(m.subj, m.grade)] || []; }
+function progOf(n){ return prog[n] || {}; }
+function progStat(n){
+  const items = libOf(n), pr = progOf(n);
+  const d = items.filter(x=>pr[x.id]).length;
+  return {t:items.length, d, pct: items.length ? Math.round(d*100/items.length) : 0};
+}
+function markLesson(student, itemId, ds){
+  const pr = Object.assign({}, prog[student]||{});
+  if(ds) pr[itemId] = ds; else delete pr[itemId];
+  prog[student] = pr;
+  saveProg();
+}
+function doneCount(n){ return doneUpToToday().filter(l=>(l.student||"بدون اسم")===n).length; }
 
 /* ============ التكرار ============ */
 const isRep = l => !!(l.rep && l.rep.t && l.rep.t !== "none");
@@ -755,7 +1116,7 @@ function hits(l, ds){
   return false;
 }
 const occDone = (l, ds) => isRep(l) ? !!(l.doneOn||{})[ds] : !!l.done;
-const occOf = (l, ds) => Object.assign({}, l, {date:ds, done:occDone(l,ds), _rep:isRep(l), _p:(l.prog||{})[ds]||null, _st:(l.stat||{})[ds]||null});
+const occOf = (l, ds) => Object.assign({}, l, {date:ds, done:occDone(l,ds), _rep:isRep(l), _st:(l.stat||{})[ds]||null});
 
 function lessonsOn(ds){
   return lessons.filter(l=>hits(l,ds)).map(l=>occOf(l,ds))
@@ -864,8 +1225,6 @@ function lessonRow(l, clashes){
     <span class="body">
       <span class="who">${esc(l.student||"بدون اسم")}</span>
       ${l.note?`<span class="note">${esc(l.note)}</span>`:""}
-      ${l._p?`<button class="stop" type="button" data-prog="${l.id}|${l.date}"><b>📍 توقفنا عند:</b> ${esc(l._p.s)}${l._p.h?`<span>واجب: ${esc(l._p.h)}</span>`:""}</button>`
-        : (l.done?`<button class="stop add" type="button" data-prog="${l.id}|${l.date}">📍 سجّل أين توقفنا</button>`:"")}
       <span class="meta">
         <span class="pill" style="background:color-mix(in srgb,${sb.c} 15%,transparent);color:${sb.c}"><i style="background:${sb.c}"></i>${sb.l}</span>
         <span class="pill" style="background:color-mix(in srgb,${g.c} 15%,transparent);color:${g.c}">${g.l}</span>
@@ -1011,137 +1370,96 @@ function renderStudents(){
 
 /* ---------- تبويب الحسابات ---------- */
 function renderPay(){
-  const book = payBook();
-  const names = Object.keys(book).sort((a,b)=> book[b].rest - book[a].rest);
-  const mFrom = TODAY.slice(0,8)+"01";
-  const moPaid = pay.pays.filter(p=>p.date>=mFrom && p.date<=TODAY).reduce((s,p)=>s+(Number(p.amount)||0),0);
-  const totRest = names.reduce((s,n)=>s+book[n].rest,0);
-  const owing = names.filter(n=>book[n].rest > 0.0005).length;
-  const moDone = doneUpToToday().filter(l=>l.date>=mFrom).length;
+  const names = allStudents();
+  let tDue = 0, tPaid = 0, rest = 0;
+  names.forEach(n=>{
+    const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+    tDue += due; tPaid += paid;
+    if(due > 0) rest += due - paid;          // المتبقي يُحسب فقط لمن كُتب له مستحق
+  });
+  const owing = names.filter(n=>{
+    const due = Number(money.due[n])||0;
+    return due > 0 && due - (Number(money.paid[n])||0) > 0.0005;
+  }).length;
 
   let html = `<div class="tiles">
-    <div class="tile"><div class="v num" style="font-size:22px">${kd(moPaid)}</div><div class="k">محصَّل هذا الشهر (د.ك)</div></div>
-    <div class="tile"><div class="v num" style="font-size:22px;color:${totRest>0.0005?"var(--warn)":"var(--chem)"}">${kd(totRest)}</div><div class="k">إجمالي المتبقي</div></div>
-    <div class="tile"><div class="v num">${moDone}</div><div class="k">حصص منفَّذة هذا الشهر</div></div>
+    <div class="tile"><div class="v num" style="font-size:20px">${kd(tDue)}</div><div class="k">إجمالي المستحق (د.ك)</div></div>
+    <div class="tile"><div class="v num" style="font-size:20px">${kd(tPaid)}</div><div class="k">إجمالي المدفوع</div></div>
+    <div class="tile"><div class="v num" style="font-size:20px;color:${rest>0.0005?"var(--warn)":"var(--chem)"}">${kd(rest)}</div><div class="k">إجمالي المتبقي</div></div>
     <div class="tile"><div class="v num">${owing}</div><div class="k">طلاب عليهم مبالغ</div></div>
-  </div>
-
-  <div class="card">
-    <h3>سعر الحصة الافتراضي</h3>
-    <div class="pay-row">
-      <label for="gprice">د.ك لكل حصة</label>
-      <input type="number" id="gprice" inputmode="decimal" min="0" step="0.5" value="${pay.price}">
-      <span style="font-size:11.5px;color:var(--ink-soft)">يمكن تخصيص سعر مختلف لكل طالب أدناه.</span>
-    </div>
   </div>`;
 
   if(!names.length){
-    html += `<div class="card"><p class="empty">لا توجد حسابات بعد.<br>علّم الحصة بعلامة ✓ في التقويم بعد تنفيذها، فتُحتسب هنا تلقائيًا.</p></div>`;
+    html += `<div class="card"><p class="empty">أضف حصصًا أولًا، ثم اكتب لكل طالب المستحق والمدفوع.</p></div>`;
   }
 
   names.forEach(n=>{
-    const b = book[n];
-    const g = gradeOf(b.grade);
-    const subjs = [...b.subjs].map(v=>subjOf(v).l).join(" و") || "—";
-    const cleared = b.rest <= 0.0005;
-    html += `<div class="card">
+    const m = studentMeta(n), g = gradeOf(m.grade), sb = subjOf(m.subj);
+    const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+    const hasDue = due > 0, r = due - paid;
+    const cleared = hasDue && r <= 0.0005;
+    html += `<div class="card stu-card" style="--acc:${sb.c}">
       <div class="stu-h">
         <span class="avatar" style="background:${g.c}">${g.s}</span>
-        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subjs}</span></span>
-        <span class="cnt"><b class="num">${b.n}</b><span>منفَّذة</span></span>
+        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${sb.l}</span></span>
+        <span class="cnt"><b class="num">${doneCount(n)}</b><span>حصة منفَّذة</span></span>
       </div>
-      <div class="pay-grid">
-        <div><b class="num">${kd(b.due)}</b><span>المستحق</span></div>
-        <div><b class="num">${kd(b.paid)}</b><span>المدفوع</span></div>
-        <div class="${cleared?"clear":"owed"}"><b class="num">${kd(b.rest)}</b><span>${cleared?"مسدَّد":"المتبقي"}</span></div>
+      <div class="pay-fields">
+        <label>المستحق<input type="number" inputmode="decimal" min="0" step="0.5" data-due="${esc(n)}" value="${money.due[n]!==undefined?money.due[n]:""}" placeholder="0"></label>
+        <label>المدفوع<input type="number" inputmode="decimal" min="0" step="0.5" data-paid="${esc(n)}" value="${money.paid[n]!==undefined?money.paid[n]:""}" placeholder="0"></label>
+        <div class="rest ${hasDue?(cleared?"clear":"owed"):""}"><span>المتبقي</span><b class="num">${hasDue?kd(r):"—"}</b></div>
       </div>
-      <div class="pay-row">
-        <label for="r-${esc(n)}">سعر حصته</label>
-        <input type="number" id="r-${esc(n)}" data-rate="${esc(n)}" inputmode="decimal" min="0" step="0.5"
-               value="${pay.rates[n]!==undefined?pay.rates[n]:""}" placeholder="${pay.price||0}">
-        <button class="minibtn solid" type="button" data-addpay="${esc(n)}">+ دفعة</button>
-      </div>
-      ${b.items.length?`<div class="paylist">${b.items.slice(0,6).map(p=>`
-        <div><b class="num">${kd(p.amount)}</b><span>${longDate(p.date)}${p.note?" · "+esc(p.note):""}</span>
-        <button class="x" type="button" data-delpay="${p.id}" aria-label="حذف الدفعة">✕</button></div>`).join("")}
-        ${b.items.length>6?`<div><span>وأقدم منها ${b.items.length-6} دفعة.</span></div>`:""}</div>`:""}
     </div>`;
   });
 
-  html += `<p class="hint">الحساب مبني على الحصص المعلَّمة كمنفَّذة حتى ${longDate(TODAY)}.<br>النسخة الاحتياطية في تبويب الإحصائيات.</p>`;
+  html += `<p class="hint">المبالغ تُكتب يدويًا كما تتفق مع كل طالب — كورسًا كاملًا أو بالحصة. عدد الحصص للاطلاع فقط ولا يدخل في الحساب.</p>`;
   main.innerHTML = html;
 
-  const gp = document.getElementById("gprice");
-  if(gp) gp.onchange = ()=>{ pay.price = Math.max(0, Number(gp.value)||0); savePay(); render(); };
-  main.querySelectorAll("[data-rate]").forEach(i=>i.onchange=()=>{
-    const n = i.dataset.rate, v = Number(i.value);
-    if(i.value==="" || !(v>0)) delete pay.rates[n]; else pay.rates[n]=v;
-    savePay(); render();
+  main.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{
+    const n = i.dataset.due, v = Number(i.value);
+    if(i.value==="" ) delete money.due[n]; else money.due[n] = Math.max(0, v||0);
+    saveMoney(); render();
   });
-  main.querySelectorAll("[data-addpay]").forEach(b=>b.onclick=()=>openPay(b.dataset.addpay));
-  main.querySelectorAll("[data-delpay]").forEach(b=>b.onclick=()=>{
-    const p = pay.pays.find(x=>x.id===b.dataset.delpay); if(!p) return;
-    askConfirm({
-      title:"حذف الدفعة",
-      text:"سيُحذف سجل هذه الدفعة نهائيًا.",
-      what: p.student+" — "+kd(p.amount)+" د.ك · "+longDate(p.date),
-      ok:"حذف",
-      run: ()=>{ pay.pays = pay.pays.filter(x=>x.id!==p.id); savePay(); render(); }
-    });
+  main.querySelectorAll("[data-paid]").forEach(i=>i.onchange=()=>{
+    const n = i.dataset.paid, v = Number(i.value);
+    if(i.value==="" ) delete money.paid[n]; else money.paid[n] = Math.max(0, v||0);
+    saveMoney(); render();
   });
   wire();
 }
 
 /* ---------- تبويب المتابعة ---------- */
-function progEntries(){
-  const out = [];
-  lessons.forEach(l=>{
-    Object.keys(l.prog||{}).forEach(ds=>{
-      const p = l.prog[ds]; if(!p || !p.s) return;
-      out.push({id:l.id, student:l.student||"بدون اسم", grade:l.grade, subj:l.subj, date:ds, s:p.s, h:p.h||""});
-    });
-  });
-  return out.sort((a,b)=> b.date.localeCompare(a.date));
+function coveredList(n){
+  const items = libOf(n), pr = progOf(n);
+  return items.filter(x=>pr[x.id]).map(x=>({t:x.t, date:pr[x.id]})).sort((a,b)=>b.date.localeCompare(a.date));
 }
 function renderProg(){
-  const all = progEntries();
-  const by = {};
-  all.forEach(e=>{ (by[e.student] ||= []).push(e); });
-  const meta = {};
-  lessons.forEach(l=>{ const n=l.student||"بدون اسم"; if(!meta[n]) meta[n]={grade:l.grade, subj:l.subj}; });
-  const names = Object.keys(meta).sort((a,b)=>{
-    const da = by[a] ? by[a][0].date : "", db = by[b] ? by[b][0].date : "";
-    return db.localeCompare(da) || a.localeCompare(b, "ar");
-  });
-
+  const names = allStudents();
   let html = "";
   if(!names.length){
-    html += `<div class="card"><p class="empty">أضف حصصًا من التقويم أولًا.<br>بعد كل حصة اضغط ✓ وسجّل أين توقفتم.</p></div>`;
+    html += `<div class="card"><p class="empty">أضف حصصًا من التقويم أولًا.<br>بعد كل حصة اضغط ✓ وعلّم الدروس التي شرحتها.</p></div>`;
   }
+  names.sort((a,b)=>{
+    const ca = coveredList(a)[0], cb = coveredList(b)[0];
+    return (cb?cb.date:"").localeCompare(ca?ca.date:"") || a.localeCompare(b,"ar");
+  });
   names.forEach(n=>{
-    const es = by[n] || [], last = es[0];
-    const m = last ? {grade:last.grade, subj:last.subj} : meta[n];
-    const g = gradeOf(m.grade), sb = subjOf(m.subj);
-    const ps = planStat(n);
+    const m = studentMeta(n), g = gradeOf(m.grade), sb = subjOf(m.subj);
+    const ps = progStat(n), cov = coveredList(n);
     html += `<div class="card stu-card" style="--acc:${sb.c}">
       <div class="stu-h">
         <span class="avatar" style="background:${g.c}">${g.s}</span>
         <span class="who"><b>${esc(n)}</b><span>${g.l} · ${sb.l}</span></span>
-        <span class="cnt"><b class="num">${es.length}</b><span>مسجَّلة</span></span>
+        <span class="cnt"><b class="num">${ps.pct}٪</b><span>من الخطة</span></span>
       </div>
-      ${last?`<div class="prog-last" style="border-inline-start-color:${sb.c}">
-        <span class="k">آخر نقطة · ${longDate(last.date)}</span>
-        <b>${esc(last.s)}</b>
-        ${last.h?`<span class="hw">واجب: ${esc(last.h)}</span>`:""}
-        <button class="minibtn" type="button" data-prog="${last.id}|${last.date}">تعديل</button>
-      </div>`:`<p class="empty" style="padding:8px 4px">لم تُسجَّل متابعة بعد.</p>`}
-      ${es.length>1?`<div class="prog-hist">${es.slice(1,5).map(e=>`
-        <button type="button" data-prog="${e.id}|${e.date}"><span class="num">${shortDate(e.date)}</span><b>${esc(e.s)}</b></button>`).join("")}
-        ${es.length>5?`<div class="more">وأقدم منها ${es.length-5} تسجيلات.</div>`:""}</div>`:""}
       <div class="plan-row">
-        <div class="pl"><span>خطة المنهج</span><b class="num">${ps.t?`${ps.d}/${ps.t} · ${ps.pct}٪`:"لم تُحدَّد"}</b></div>
+        <div class="pl"><span>المنجز من الخطة</span><b class="num">${ps.t?`${ps.d} / ${ps.t}`:"لا دروس في المكتبة"}</b></div>
         <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div>
       </div>
+      ${cov.length?`<div class="prog-hist">${cov.slice(0,5).map(c=>`
+        <div class="covrow"><span class="num">${shortDate(c.date)}</span><b>${esc(c.t)}</b></div>`).join("")}
+        ${cov.length>5?`<div class="more">وقبلها ${cov.length-5} درسًا.</div>`:""}</div>`
+        :`<p class="empty" style="padding:8px 4px">لم يُعلَّم أي درس بعد.</p>`}
       <div class="pay-row">
         <button class="minibtn" type="button" data-plan="${esc(n)}">📚 الخطة</button>
         <button class="minibtn solid" type="button" data-report="${esc(n)}">📄 تقرير الشهر</button>
@@ -1156,60 +1474,58 @@ function renderProg(){
 
 /* ---------- تبويب الإحصائيات ---------- */
 function renderStats(){
-  const sel = new Date();
-  const sun = addDays(sel, -sel.getDay());
-  const wk = expand(key(sun), key(addDays(sun,6)));
-  const mFrom = TODAY.slice(0,8)+"01";
-  const mTo   = key(new Date(sel.getFullYear(), sel.getMonth()+1, 0));
-  const mo = expand(mFrom, mTo);
+  const all  = expand(firstDate(), winTo());
+  const done = all.filter(l=>l.done);
+  const canc = all.filter(l=>l._st==="c");
+  const post = all.filter(l=>l._st==="p");
+  const students = allStudents();
+  const doneMin = done.reduce((t,l)=>t+durOf(l),0);
+  const allMin  = all.reduce((t,l)=>t+durOf(l),0);
 
-  const students = new Set(expand(winFrom(), winTo()).map(l=>l.student).filter(Boolean));
-  const wkMin = wk.reduce((s,l)=>s+durOf(l),0);
-  const moMin = mo.reduce((s,l)=>s+durOf(l),0);
-  const todays = lessonsOn(TODAY);
-
-  const bySubj = SUBJECTS.map(s=>({label:s.l,color:s.c,n:mo.filter(l=>l.subj===s.v).length,
-                                   m:mo.filter(l=>l.subj===s.v).reduce((a,l)=>a+durOf(l),0)})).filter(x=>x.n>0);
-  const byGrade = GRADES.map(g=>({label:g.l,color:g.c,n:mo.filter(l=>l.grade===g.v).length})).filter(x=>x.n>0);
+  const bySubj = SUBJECTS.map(x=>({label:x.l, color:x.c,
+      n:done.filter(l=>l.subj===x.v).length,
+      m:done.filter(l=>l.subj===x.v).reduce((a,l)=>a+durOf(l),0)})).filter(x=>x.n>0);
+  const byGrade = GRADES.map(g=>({label:g.l, color:g.c, n:done.filter(l=>l.grade===g.v).length})).filter(x=>x.n>0);
   const maxS = Math.max(1,...bySubj.map(x=>x.n)), maxG = Math.max(1,...byGrade.map(x=>x.n));
 
   const perStu = {};
-  mo.forEach(l=>{ const k=l.student||"بدون اسم"; perStu[k]=(perStu[k]||0)+durOf(l); });
-  const topStu = Object.entries(perStu).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  done.forEach(l=>{ const k = l.student||"بدون اسم"; perStu[k] = (perStu[k]||0) + durOf(l); });
+  const topStu = Object.entries(perStu).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxStu = Math.max(1,...topStu.map(x=>x[1]));
 
   let html = `<div class="tiles">
-    <div class="tile"><div class="v num">${todays.length}</div><div class="k">حصص اليوم</div></div>
-    <div class="tile"><div class="v num">${wk.length}</div><div class="k">حصص هذا الأسبوع</div></div>
-    <div class="tile"><div class="v" style="font-size:19px">${durLabel(wkMin)}</div><div class="k">ساعات هذا الأسبوع</div></div>
-    <div class="tile"><div class="v num">${students.size}</div><div class="k">عدد الطلاب</div></div>
+    <div class="tile"><div class="v num">${done.length}</div><div class="k">حصص منفَّذة</div></div>
+    <div class="tile"><div class="v" style="font-size:19px">${durLabel(doneMin)}</div><div class="k">مجموع ساعات التدريس</div></div>
+    <div class="tile"><div class="v num">${students.length}</div><div class="k">عدد الطلاب</div></div>
+    <div class="tile"><div class="v num">${all.length}</div><div class="k">إجمالي الحصص المسجَّلة</div></div>
   </div>
 
-  <div class="card"><h3>${MONTHS[sel.getMonth()]} <span class="num">${sel.getFullYear()}</span></h3>
+  <div class="card"><h3>منذ البداية</h3>
     <div class="nextline" style="border:0;padding:0">
-      <b class="num">${mo.length}</b> حصة مجدولة · مجموع <b>${durLabel(moMin)}</b>
+      من <b>${longDate(firstDate())}</b> حتى اليوم · مجموع الحصص <b class="num">${all.length}</b> بمدة <b>${durLabel(allMin)}</b>
+      ${canc.length||post.length?`<br>ملغاة <b class="num">${canc.length}</b> · مؤجَّلة <b class="num">${post.length}</b>`:""}
     </div>
   </div>`;
 
-  html += `<div class="card"><h3>حسب المادة (هذا الشهر)</h3>`;
+  html += `<div class="card"><h3>حسب المادة (كل المدة)</h3>`;
   if(bySubj.length){
     bySubj.forEach(x=>{
       html += `<div class="bar-row"><div class="l"><span>${x.label}</span><b class="num">${x.n} حصة · ${durLabel(x.m)}</b></div>
         <div class="track"><div class="fill" style="width:${Math.round(x.n/maxS*100)}%;background:${x.color}"></div></div></div>`;
     });
-  } else html += `<p class="empty" style="padding:4px 0">لا حصص هذا الشهر.</p>`;
+  } else html += `<p class="empty" style="padding:4px 0">لا حصص منفَّذة بعد.</p>`;
   html += `</div>`;
 
-  html += `<div class="card"><h3>حسب الصف (هذا الشهر)</h3>`;
+  html += `<div class="card"><h3>حسب الصف (كل المدة)</h3>`;
   if(byGrade.length){
     byGrade.forEach(x=>{
       html += `<div class="bar-row"><div class="l"><span>${x.label}</span><b class="num">${x.n}</b></div>
         <div class="track"><div class="fill" style="width:${Math.round(x.n/maxG*100)}%;background:${x.color}"></div></div></div>`;
     });
-  } else html += `<p class="empty" style="padding:4px 0">لا حصص هذا الشهر.</p>`;
+  } else html += `<p class="empty" style="padding:4px 0">لا حصص منفَّذة بعد.</p>`;
   html += `</div>`;
 
-  html += `<div class="card"><h3>أكثر الطلاب ساعاتٍ (هذا الشهر)</h3>`;
+  html += `<div class="card"><h3>أكثر الطلاب ساعاتٍ (كل المدة)</h3>`;
   if(topStu.length){
     topStu.forEach(([n,m])=>{
       html += `<div class="bar-row"><div class="l"><span>${esc(n)}</span><b>${durLabel(m)}</b></div>
@@ -1220,7 +1536,7 @@ function renderStats(){
 
   html += `<div class="card"><h3>النسخة الاحتياطية</h3>
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
-      البيانات محفوظة في هذا المتصفح فقط. نزّل نسخة بين حين وآخر، واستوردها عند تغيير الجهاز.</p>
+      البيانات محفوظة في هذا الجهاز فقط. نزّل نسخة بين حين وآخر، واستوردها عند تغيير الجهاز.</p>
     <div class="pay-row">
       <button class="minibtn solid" type="button" id="bk-save">تنزيل نسخة</button>
       <button class="minibtn" type="button" id="bk-load">استيراد من ملف</button>
@@ -1237,7 +1553,7 @@ function renderStats(){
 
 /* ---------- التصدير والاستيراد ---------- */
 function backupBlob(){
-  return JSON.stringify({ app:"hisas", v:2, at:new Date().toISOString(), lessons, pay, plan }, null, 1);
+  return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money }, null, 1);
 }
 function wireBackup(){
   const msg = document.getElementById("bk-msg");
@@ -1276,23 +1592,24 @@ function wireBackup(){
       lessons = lessons.concat(added);
       save();
 
-      let addedPays = 0;
-      if(data.pay){
-        if(!pay.price && Number(data.pay.price)) pay.price = Number(data.pay.price);
-        Object.keys(data.pay.rates||{}).forEach(k=>{ if(pay.rates[k]===undefined) pay.rates[k]=data.pay.rates[k]; });
-        const hp = new Set(pay.pays.map(x=>x.id));
-        (data.pay.pays||[]).forEach(x=>{ if(x && x.id && !hp.has(x.id)){ pay.pays.push(x); addedPays++; } });
-        savePay();
-      }
-      if(data.plan && typeof data.plan === "object"){
-        Object.keys(data.plan).forEach(n=>{
-          const cur = plan[n] || [], ids = new Set(cur.map(x=>x.id));
-          (data.plan[n]||[]).forEach(x=>{ if(x && x.id && !ids.has(x.id)) cur.push(x); });
-          plan[n] = cur;
+      if(data.lib && typeof data.lib === "object"){
+        Object.keys(data.lib).forEach(k=>{
+          const cur = lib[k] || [], ids = new Set(cur.map(x=>x.id));
+          (data.lib[k]||[]).forEach(x=>{ if(x && x.id && !ids.has(x.id)) cur.push(x); });
+          lib[k] = cur;
         });
-        savePlan();
+        saveLib();
       }
-      msg.textContent = "تم استيراد " + added.length + " حصة و" + addedPays + " دفعة.";
+      if(data.prog && typeof data.prog === "object"){
+        Object.keys(data.prog).forEach(n=>{ prog[n] = Object.assign({}, data.prog[n], prog[n]||{}); });
+        saveProg();
+      }
+      if(data.money){
+        money.due = Object.assign({}, data.money.due||{}, money.due);
+        money.paid = Object.assign({}, data.money.paid||{}, money.paid);
+        saveMoney();
+      }
+      msg.textContent = "تم استيراد " + added.length + " حصة، مع الخطة والحسابات.";
       file.value = "";
       render();
     };
@@ -1332,7 +1649,7 @@ function wire(){
       b.setAttribute("aria-checked", now ? "true" : "false");
       paintBadge();
     } else render();
-    /* بعد تعليم الحصة كمنفَّذة: اسأل أين توقفنا */
+    /* بعد تعليم الحصة كمنفَّذة: افتح قائمة دروس الخطة */
     if(now) openProg(id, ds);
   });
   main.querySelectorAll("[data-prog]").forEach(b=>b.onclick=()=>{
@@ -1344,9 +1661,6 @@ function wire(){
 /* ============ نافذة «بعد الحصة» ============ */
 const gscrim = document.getElementById("gscrim");
 let progFor = null, progSt = "d";
-function lastStopOf(student, beforeDs){
-  return progEntries().find(e=>e.student===student && e.date<beforeDs) || null;
-}
 function isDoneAt(l, ds){ return isRep(l) ? !!(l.doneOn||{})[ds] : !!l.done; }
 function withDone(l, ds, v){
   if(isRep(l)){
@@ -1362,21 +1676,41 @@ function paintSt(){
 }
 document.querySelectorAll("#g-st [data-st]").forEach(b=>b.onclick=()=>{ progSt = b.dataset.st; paintSt(); });
 
+function paintGlist(){
+  if(!progFor) return;
+  const {student, ds} = progFor;
+  const items = libOf(student), pr = progOf(student);
+  const box = document.getElementById("g-list");
+  if(!items.length){
+    box.innerHTML = `<p class="empty">لا دروس في مكتبة هذه المادة بعد.<br>أضفها من تبويب المتابعة ← 📚 الخطة.</p>`;
+    return;
+  }
+  const first = items.findIndex(x=>!pr[x.id]);
+  box.innerHTML = items.map((x,i)=>{
+    const on = !!pr[x.id], here = pr[x.id]===ds;
+    return `<div class="pitem${on?" on":""}${here?" today":""}${i===first?" next":""}">
+      <button type="button" class="chk" role="checkbox" aria-checked="${on?"true":"false"}" data-mark="${x.id}" aria-label="تم شرحه">✓</button>
+      <span>${esc(x.t)}</span>
+      ${on?`<small class="num">${here?"اليوم":shortDate(pr[x.id])}</small>`:""}
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-mark]").forEach(b=>b.onclick=()=>{
+    const id = b.dataset.mark;
+    markLesson(student, id, progOf(student)[id] ? null : ds);
+    paintGlist();
+  });
+  const nx = box.querySelector(".next");
+  if(nx) nx.scrollIntoView({block:"center"});
+}
 function openProg(id, ds){
   const l = lessons.find(x=>x.id===id); if(!l) return;
-  progFor = {id, ds};
-  const who = l.student||"بدون اسم";
-  const cur = (l.prog||{})[ds] || {};
+  const student = l.student||"بدون اسم";
+  progFor = {id, ds, student};
   const st = (l.stat||{})[ds];
   progSt = st ? st : "d";
-  document.getElementById("gsub").textContent = who + " · " + subjOf(l.subj).l + " · " + longDate(ds);
-  document.getElementById("g-stop").value = cur.s || "";
-  document.getElementById("g-hw").value = cur.h || "";
-  const prev = lastStopOf(who, ds);
-  document.getElementById("g-last").textContent = prev ? ("المرة السابقة: " + prev.s) : "";
-  const seen = [...new Set(progEntries().filter(e=>e.student===who).map(e=>e.s))].slice(0,12);
-  document.getElementById("g-list").innerHTML = seen.map(v=>`<option value="${esc(v)}">`).join("");
+  document.getElementById("gsub").textContent = student + " · " + subjOf(l.subj).l + " · " + longDate(ds);
   paintSt();
+  paintGlist();
   gscrim.hidden = false;
 }
 function closeProg(){ gscrim.hidden = true; progFor = null; render(); }
@@ -1387,20 +1721,10 @@ document.getElementById("g-save").onclick = ()=>{
   const {id, ds} = progFor;
   const i = lessons.findIndex(x=>x.id===id); if(i<0) return closeProg();
   let l = lessons[i];
-  const prog = Object.assign({}, l.prog||{});
   const stat = Object.assign({}, l.stat||{});
-  if(progSt === "d"){
-    l = withDone(l, ds, true);
-    delete stat[ds];
-    const sVal = document.getElementById("g-stop").value.trim();
-    const hVal = document.getElementById("g-hw").value.trim();
-    if(sVal) prog[ds] = {s:sVal, h:hVal}; else delete prog[ds];
-  } else {
-    l = withDone(l, ds, false);
-    stat[ds] = progSt;
-    delete prog[ds];
-  }
-  lessons[i] = Object.assign({}, l, {prog, stat});
+  if(progSt === "d"){ l = withDone(l, ds, true); delete stat[ds]; }
+  else { l = withDone(l, ds, false); stat[ds] = progSt; }
+  lessons[i] = Object.assign({}, l, {stat});
   save();
   closeProg();
 };
@@ -1409,20 +1733,23 @@ document.getElementById("g-save").onclick = ()=>{
 const lscrim = document.getElementById("lscrim");
 let planFor = null;
 function paintPlan(){
-  const a = plan[planFor] || [], ps = planStat(planFor);
+  const n = planFor, m = studentMeta(n), k = libKey(m.subj, m.grade);
+  const items = lib[k] || [], pr = progOf(n), ps = progStat(n);
   document.getElementById("l-sum").innerHTML = `<div class="plan-row" style="margin-top:0">
-    <div class="pl"><span>المنجز</span><b class="num">${ps.t?`${ps.d}/${ps.t} · ${ps.pct}٪`:"—"}</b></div>
+    <div class="pl"><span>${subjOf(m.subj).l} · ${gradeOf(m.grade).l}</span><b class="num">${ps.t?`${ps.d} / ${ps.t} · ${ps.pct}٪`:"—"}</b></div>
     <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div></div>`;
-  document.getElementById("l-list").innerHTML = a.length ? a.map(x=>`
-    <div class="pitem${x.d?" on":""}">
-      <button type="button" class="chk" role="checkbox" aria-checked="${x.d?"true":"false"}" data-pt="${x.id}" aria-label="تم">✓</button>
+  document.getElementById("l-list").innerHTML = items.length ? items.map(x=>`
+    <div class="pitem${pr[x.id]?" on":""}">
+      <button type="button" class="chk" role="checkbox" aria-checked="${pr[x.id]?"true":"false"}" data-pt="${x.id}" aria-label="تم شرحه">✓</button>
       <span>${esc(x.t)}</span>
-      <button class="x" type="button" data-pdel="${x.id}" aria-label="حذف">✕</button>
-    </div>`).join("") : `<p class="empty">لا دروس بعد. أضفها بالأسفل، سطرًا لكل درس.</p>`;
+      ${pr[x.id]?`<small class="num">${shortDate(pr[x.id])}</small>`:""}
+      <button class="x" type="button" data-pdel="${x.id}" aria-label="حذف الدرس من المكتبة">✕</button>
+    </div>`).join("") : `<p class="empty">لا دروس بعد لهذه المادة. أضفها بالأسفل، سطرًا لكل درس.</p>`;
 }
 function openPlan(n){
   planFor = n;
-  document.getElementById("lsub").textContent = n;
+  const m = studentMeta(n);
+  document.getElementById("lsub").textContent = n + " — دروس " + subjOf(m.subj).l + " لـ" + gradeOf(m.grade).l;
   document.getElementById("l-add").value = "";
   paintPlan();
   lscrim.hidden = false;
@@ -1432,17 +1759,25 @@ document.getElementById("l-close").onclick = closePlan;
 lscrim.onclick = e => { if(e.target===lscrim) closePlan(); };
 document.getElementById("l-list").onclick = e => {
   const t = e.target.closest("[data-pt]"), d = e.target.closest("[data-pdel]");
-  const a = plan[planFor] || [];
-  if(t){ const x = a.find(y=>y.id===t.dataset.pt); if(x){ x.d = !x.d; savePlan(); paintPlan(); } }
-  if(d){ plan[planFor] = a.filter(y=>y.id!==d.dataset.pdel); savePlan(); paintPlan(); }
+  const m = studentMeta(planFor), k = libKey(m.subj, m.grade);
+  if(t){ const id = t.dataset.pt; markLesson(planFor, id, progOf(planFor)[id] ? null : TODAY); paintPlan(); }
+  if(d){
+    const id = d.dataset.pdel;
+    lib[k] = (lib[k]||[]).filter(x=>x.id!==id);
+    saveLib();
+    Object.keys(prog).forEach(st=>{ if(prog[st] && prog[st][id]){ delete prog[st][id]; } });
+    saveProg();
+    paintPlan();
+  }
 };
 document.getElementById("l-addbtn").onclick = ()=>{
   const lines = document.getElementById("l-add").value.split("\n").map(x=>x.trim()).filter(Boolean);
   if(!lines.length) return;
-  const a = plan[planFor] || [];
-  lines.forEach((t,k)=> a.push({id:"t"+Date.now().toString(36)+k+Math.random().toString(36).slice(2,5), t, d:false}));
-  plan[planFor] = a;
-  savePlan();
+  const m = studentMeta(planFor), k = libKey(m.subj, m.grade);
+  const a = lib[k] || [];
+  lines.forEach((t,i)=> a.push({id:"t"+Date.now().toString(36)+i+Math.random().toString(36).slice(2,5), t}));
+  lib[k] = a;
+  saveLib();
   document.getElementById("l-add").value = "";
   paintPlan();
 };
@@ -1453,21 +1788,18 @@ let rp = null;
 function reportData(){
   const {n, y, m} = rp;
   const from = y+"-"+pad(m+1)+"-01";
-  const to = y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
-  const occ = expand(from, to).filter(l=>(l.student||"بدون اسم")===n);
+  const to   = y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
+  const occ  = expand(from, to).filter(l=>(l.student||"بدون اسم")===n);
   const done = occ.filter(l=>l.done);
   const canc = occ.filter(l=>l._st==="c");
   const post = occ.filter(l=>l._st==="p");
   const upcoming = occ.filter(l=>!l.done && !l._st && l.date>=TODAY);
   const minsDone = done.reduce((t,l)=>t+durOf(l),0);
-  const topics = done.filter(l=>l._p).sort((a,b)=>a.date.localeCompare(b.date));
-  const rate = rateOf(n);
-  const paidM = pay.pays.filter(p=>p.student===n && p.date>=from && p.date<=to).reduce((t,p)=>t+(Number(p.amount)||0),0);
-  const bk = payBook()[n];
-  const ref = occ[0] || lessons.find(l=>(l.student||"بدون اسم")===n) || {};
-  const subs = [...new Set((occ.length?occ:[ref]).map(l=>subjOf(l.subj).l))];
-  return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, topics, rate,
-          dueM:done.length*rate, paidM, rest: bk ? bk.rest : 0, subs, g:gradeOf(ref.grade), ps:planStat(n)};
+  const covered = coveredList(n).filter(c=>c.date>=from && c.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
+  const meta = studentMeta(n);
+  const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+  return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, covered,
+          due, paid, rest: due-paid, subs:[subjOf(meta.subj).l], g:gradeOf(meta.grade), ps:progStat(n)};
 }
 function paintReport(){
   const d = reportData();
@@ -1485,20 +1817,19 @@ function paintReport(){
       <div class="tile"><div class="v num">${d.canc.length}</div><div class="k">ملغاة</div></div>
       <div class="tile"><div class="v num">${d.post.length}</div><div class="k">مؤجَّلة</div></div>
     </div>
-    <section class="card"><h3>ما تم شرحه</h3>
-      ${d.topics.length?`<div class="rp-list">${d.topics.map(l=>`
-        <div><span class="num">${shortDate(l.date)}</span><p><b>${esc(l._p.s)}</b>${l._p.h?`<small>واجب: ${esc(l._p.h)}</small>`:""}</p></div>`).join("")}</div>`
-        :`<p class="empty">لم تُسجَّل موضوعات في هذا الشهر.</p>`}
+    <section class="card"><h3>الدروس التي شُرحت</h3>
+      ${d.covered.length?`<div class="rp-list">${d.covered.map(c=>`
+        <div><span class="num">${shortDate(c.date)}</span><p><b>${esc(c.t)}</b></p></div>`).join("")}</div>`
+        :`<p class="empty">لم يُعلَّم أي درس في هذا الشهر.</p>`}
     </section>
-    ${d.ps.t?`<section class="card"><h3>خطة المنهج</h3>
-      <div class="plan-row" style="margin-top:0"><div class="pl"><span>المنجز من الخطة</span><b class="num">${d.ps.d}/${d.ps.t} · ${d.ps.pct}٪</b></div>
+    ${d.ps.t?`<section class="card"><h3>التقدم في الخطة</h3>
+      <div class="plan-row" style="margin-top:0"><div class="pl"><span>المنجز من كامل الخطة</span><b class="num">${d.ps.d} / ${d.ps.t} · ${d.ps.pct}٪</b></div>
       <div class="ptrack"><div class="pfill" style="width:${d.ps.pct}%"></div></div></div></section>`:""}
-    ${d.rate||d.paidM?`<section class="card"><h3>الحساب (د.ك)</h3>
+    ${(d.due||d.paid)?`<section class="card"><h3>الحساب (د.ك)</h3>
       <div class="rp-money">
-        <div><span>سعر الحصة</span><b class="num">${kd(d.rate)}</b></div>
-        <div><span>مستحق هذا الشهر</span><b class="num">${kd(d.dueM)}</b></div>
-        <div><span>مدفوع هذا الشهر</span><b class="num">${kd(d.paidM)}</b></div>
-        <div class="${d.rest>0.0005?"owed":"clear"}"><span>المتبقي الإجمالي</span><b class="num">${kd(d.rest)}</b></div>
+        <div><span>المستحق</span><b class="num">${kd(d.due)}</b></div>
+        <div><span>المدفوع</span><b class="num">${kd(d.paid)}</b></div>
+        <div class="${d.rest>0.0005?"owed":"clear"}"><span>المتبقي</span><b class="num">${kd(d.rest)}</b></div>
       </div></section>`:""}
     ${d.upcoming.length?`<p class="hint" style="margin-top:12px">متبقٍّ في هذا الشهر: <b class="num">${d.upcoming.length}</b> حصة مجدولة.</p>`:""}
     <p class="rp-foot">أُعدّ في ${longDate(TODAY)} · جدول الحصص الخارجية</p>
@@ -1510,9 +1841,9 @@ function reportText(){
   L.push(`الحصص المنفَّذة: ${d.done.length}${d.minsDone?` (${durShort(d.minsDone)})`:""}`);
   if(d.canc.length) L.push(`الملغاة: ${d.canc.length}`);
   if(d.post.length) L.push(`المؤجَّلة: ${d.post.length}`);
-  if(d.topics.length){ L.push("", "ما تم شرحه:"); d.topics.forEach(l=>L.push(`• ${shortDate(l.date)}: ${l._p.s}${l._p.h?` — واجب: ${l._p.h}`:""}`)); }
-  if(d.ps.t) L.push("", `خطة المنهج: ${d.ps.d} من ${d.ps.t} (${d.ps.pct}٪)`);
-  if(d.rate||d.paidM) L.push("", `مستحق هذا الشهر: ${kd(d.dueM)} د.ك`, `مدفوع هذا الشهر: ${kd(d.paidM)} د.ك`, `المتبقي الإجمالي: ${kd(d.rest)} د.ك`);
+  if(d.covered.length){ L.push("", "الدروس التي شُرحت:"); d.covered.forEach(c=>L.push(`• ${shortDate(c.date)}: ${c.t}`)); }
+  if(d.ps.t) L.push("", `التقدم في الخطة: ${d.ps.d} من ${d.ps.t} (${d.ps.pct}٪)`);
+  if(d.due||d.paid) L.push("", `المستحق: ${kd(d.due)} د.ك`, `المدفوع: ${kd(d.paid)} د.ك`, `المتبقي: ${kd(d.rest)} د.ك`);
   return L.join("\n");
 }
 function openReport(n){
@@ -1640,35 +1971,6 @@ function tick(){
 setInterval(tick, 60000);
 document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) tick(); });
 
-/* ============ نافذة الدفعة ============ */
-const pscrim = document.getElementById("pscrim");
-let payFor = null;
-function openPay(name){
-  payFor = name;
-  document.getElementById("psub").textContent = name;
-  document.getElementById("p-amount").value = "";
-  document.getElementById("p-date").value = TODAY;
-  document.getElementById("p-note").value = "";
-  document.getElementById("p-msg").hidden = true;
-  pscrim.hidden = false;
-  setTimeout(()=>document.getElementById("p-amount").focus(), 60);
-}
-function closePay(){ pscrim.hidden = true; payFor = null; }
-document.getElementById("p-cancel").onclick = closePay;
-pscrim.onclick = e => { if(e.target===pscrim) closePay(); };
-document.getElementById("p-save").onclick = ()=>{
-  const amt = Number(document.getElementById("p-amount").value);
-  const date = document.getElementById("p-date").value || TODAY;
-  const msg = document.getElementById("p-msg");
-  if(!(amt>0)){ msg.textContent = "أدخل مبلغًا أكبر من صفر."; msg.hidden = false; return; }
-  pay.pays.push({
-    id: "p"+Date.now()+Math.floor(Math.random()*1000),
-    student: payFor, amount: amt, date,
-    note: document.getElementById("p-note").value.trim()
-  });
-  savePay(); closePay(); render();
-};
-
 /* ============ نافذة التأكيد ============ */
 const cscrim = document.getElementById("cscrim");
 let run1=null, run2=null;
@@ -1786,7 +2088,6 @@ document.getElementById("f-save").onclick = ()=>{
     rep,
     doneOn: rep.t==="none" ? {} : (old && old.doneOn ? old.doneOn : {}),
     skip:   rep.t==="none" ? [] : (old && old.skip   ? old.skip   : []),
-    prog:   old && old.prog ? old.prog : {},
     stat:   old && old.stat ? old.stat : {},
     ts: old ? (old.ts||Date.now()) : Date.now()
   };
@@ -1833,8 +2134,8 @@ document.getElementById("themebtn").onclick = ()=>{
 try{ const th=localStorage.getItem("hisas_theme"); if(th) document.documentElement.setAttribute("data-theme",th); }catch(e){}
 
 load();
-loadPay();
-loadPlan();
+loadLib();
+loadMoney();
 render();
 </script>
 
