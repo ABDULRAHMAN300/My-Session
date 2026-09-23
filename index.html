@@ -1072,13 +1072,29 @@ function allStudents(){
   lessons.forEach(l=>{ const n = l.student||"بدون اسم"; if(!out.includes(n)) out.push(n); });
   return out;
 }
-function libOf(n){ const m = studentMeta(n); return lib[libKey(m.subj, m.grade)] || []; }
+/* كل المواد التي يدرسها الطالب، الأحدث أولًا */
+function studentSubjects(n){
+  const out = [], seen = {};
+  lessons.filter(l=>(l.student||"بدون اسم")===n)
+         .sort((a,b)=>(b.ts||0)-(a.ts||0))
+         .forEach(l=>{
+           const k = libKey(l.subj, l.grade);
+           if(!seen[k]){ seen[k] = 1; out.push({subj:l.subj, grade:l.grade, key:k}); }
+         });
+  return out.length ? out : [Object.assign({}, studentMeta(n), {key:libKey(studentMeta(n).subj, studentMeta(n).grade)})];
+}
+function libOfKey(k){ return lib[k] || []; }
+function libOf(n){
+  /* كل دروس مواد الطالب مجتمعة */
+  return studentSubjects(n).reduce((a,x)=>a.concat(libOfKey(x.key)), []);
+}
 function progOf(n){ return prog[n] || {}; }
-function progStat(n){
-  const items = libOf(n), pr = progOf(n);
+function statOf(items, pr){
   const d = items.filter(x=>pr[x.id]).length;
   return {t:items.length, d, pct: items.length ? Math.round(d*100/items.length) : 0};
 }
+function progStat(n){ return statOf(libOf(n), progOf(n)); }
+function progStatKey(n, k){ return statOf(libOfKey(k), progOf(n)); }
 function markLesson(student, itemId, ds){
   const pr = Object.assign({}, prog[student]||{});
   if(ds) pr[itemId] = ds; else delete pr[itemId];
@@ -1444,30 +1460,34 @@ function renderProg(){
     return (cb?cb.date:"").localeCompare(ca?ca.date:"") || a.localeCompare(b,"ar");
   });
   names.forEach(n=>{
+    const subs = studentSubjects(n);
     const m = studentMeta(n), g = gradeOf(m.grade), sb = subjOf(m.subj);
     const ps = progStat(n), cov = coveredList(n);
     html += `<div class="card stu-card" style="--acc:${sb.c}">
       <div class="stu-h">
         <span class="avatar" style="background:${g.c}">${g.s}</span>
-        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${sb.l}</span></span>
+        <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subs.map(x=>subjOf(x.subj).l).join(" و")}</span></span>
         <span class="cnt"><b class="num">${ps.pct}٪</b><span>من الخطة</span></span>
       </div>
-      <div class="plan-row">
-        <div class="pl"><span>المنجز من الخطة</span><b class="num">${ps.t?`${ps.d} / ${ps.t}`:"لا دروس في المكتبة"}</b></div>
-        <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div>
-      </div>
+      ${subs.map(x=>{
+        const st = progStatKey(n, x.key), c = subjOf(x.subj);
+        return `<div class="plan-row">
+          <div class="pl"><span>${subjOf(x.subj).l} · ${gradeOf(x.grade).l}</span><b class="num">${st.t?`${st.d} / ${st.t} · ${st.pct}٪`:"لا دروس في المكتبة"}</b></div>
+          <div class="ptrack"><div class="pfill" style="width:${st.pct}%;background:${c.c}"></div></div>
+        </div>`;
+      }).join("")}
       ${cov.length?`<div class="prog-hist">${cov.slice(0,5).map(c=>`
         <div class="covrow"><span class="num">${shortDate(c.date)}</span><b>${esc(c.t)}</b></div>`).join("")}
         ${cov.length>5?`<div class="more">وقبلها ${cov.length-5} درسًا.</div>`:""}</div>`
         :`<p class="empty" style="padding:8px 4px">لم يُعلَّم أي درس بعد.</p>`}
       <div class="pay-row">
-        <button class="minibtn" type="button" data-plan="${esc(n)}">📚 الخطة</button>
+        ${subs.map(x=>`<button class="minibtn" type="button" data-plan="${esc(n)}" data-subj="${x.subj}" data-grade="${x.grade}">📚 خطة ${subjOf(x.subj).l}</button>`).join("")}
         <button class="minibtn solid" type="button" data-report="${esc(n)}">📄 تقرير الشهر</button>
       </div>
     </div>`;
   });
   main.innerHTML = html;
-  main.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>openPlan(b.dataset.plan));
+  main.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>openPlan(b.dataset.plan, b.dataset.subj, b.dataset.grade));
   main.querySelectorAll("[data-report]").forEach(b=>b.onclick=()=>openReport(b.dataset.report));
   wire();
 }
@@ -1678,8 +1698,8 @@ document.querySelectorAll("#g-st [data-st]").forEach(b=>b.onclick=()=>{ progSt =
 
 function paintGlist(){
   if(!progFor) return;
-  const {student, ds} = progFor;
-  const items = libOf(student), pr = progOf(student);
+  const {student, ds, key} = progFor;
+  const items = libOfKey(key), pr = progOf(student);
   const box = document.getElementById("g-list");
   if(!items.length){
     box.innerHTML = `<p class="empty">لا دروس في مكتبة هذه المادة بعد.<br>أضفها من تبويب المتابعة ← 📚 الخطة.</p>`;
@@ -1705,7 +1725,7 @@ function paintGlist(){
 function openProg(id, ds){
   const l = lessons.find(x=>x.id===id); if(!l) return;
   const student = l.student||"بدون اسم";
-  progFor = {id, ds, student};
+  progFor = {id, ds, student, key: libKey(l.subj, l.grade)};
   const st = (l.stat||{})[ds];
   progSt = st ? st : "d";
   document.getElementById("gsub").textContent = student + " · " + subjOf(l.subj).l + " · " + longDate(ds);
@@ -1733,8 +1753,8 @@ document.getElementById("g-save").onclick = ()=>{
 const lscrim = document.getElementById("lscrim");
 let planFor = null;
 function paintPlan(){
-  const n = planFor, m = studentMeta(n), k = libKey(m.subj, m.grade);
-  const items = lib[k] || [], pr = progOf(n), ps = progStat(n);
+  const n = planFor.n, k = planFor.key, m = planFor;
+  const items = lib[k] || [], pr = progOf(n), ps = progStatKey(n, k);
   document.getElementById("l-sum").innerHTML = `<div class="plan-row" style="margin-top:0">
     <div class="pl"><span>${subjOf(m.subj).l} · ${gradeOf(m.grade).l}</span><b class="num">${ps.t?`${ps.d} / ${ps.t} · ${ps.pct}٪`:"—"}</b></div>
     <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div></div>`;
@@ -1746,10 +1766,9 @@ function paintPlan(){
       <button class="x" type="button" data-pdel="${x.id}" aria-label="حذف الدرس من المكتبة">✕</button>
     </div>`).join("") : `<p class="empty">لا دروس بعد لهذه المادة. أضفها بالأسفل، سطرًا لكل درس.</p>`;
 }
-function openPlan(n){
-  planFor = n;
-  const m = studentMeta(n);
-  document.getElementById("lsub").textContent = n + " — دروس " + subjOf(m.subj).l + " لـ" + gradeOf(m.grade).l;
+function openPlan(n, subj, grade){
+  planFor = {n, subj, grade, key: libKey(subj, grade)};
+  document.getElementById("lsub").textContent = n + " — دروس " + subjOf(subj).l + " لـ" + gradeOf(grade).l;
   document.getElementById("l-add").value = "";
   paintPlan();
   lscrim.hidden = false;
@@ -1759,8 +1778,8 @@ document.getElementById("l-close").onclick = closePlan;
 lscrim.onclick = e => { if(e.target===lscrim) closePlan(); };
 document.getElementById("l-list").onclick = e => {
   const t = e.target.closest("[data-pt]"), d = e.target.closest("[data-pdel]");
-  const m = studentMeta(planFor), k = libKey(m.subj, m.grade);
-  if(t){ const id = t.dataset.pt; markLesson(planFor, id, progOf(planFor)[id] ? null : TODAY); paintPlan(); }
+  const n = planFor.n, k = planFor.key;
+  if(t){ const id = t.dataset.pt; markLesson(n, id, progOf(n)[id] ? null : TODAY); paintPlan(); }
   if(d){
     const id = d.dataset.pdel;
     lib[k] = (lib[k]||[]).filter(x=>x.id!==id);
@@ -1773,7 +1792,7 @@ document.getElementById("l-list").onclick = e => {
 document.getElementById("l-addbtn").onclick = ()=>{
   const lines = document.getElementById("l-add").value.split("\n").map(x=>x.trim()).filter(Boolean);
   if(!lines.length) return;
-  const m = studentMeta(planFor), k = libKey(m.subj, m.grade);
+  const k = planFor.key;
   const a = lib[k] || [];
   lines.forEach((t,i)=> a.push({id:"t"+Date.now().toString(36)+i+Math.random().toString(36).slice(2,5), t}));
   lib[k] = a;
@@ -1798,8 +1817,9 @@ function reportData(){
   const covered = coveredList(n).filter(c=>c.date>=from && c.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
   const meta = studentMeta(n);
   const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+  const sl = studentSubjects(n).map(x=>({label:subjOf(x.subj).l, color:subjOf(x.subj).c, st:progStatKey(n, x.key)}));
   return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, covered,
-          due, paid, rest: due-paid, subs:[subjOf(meta.subj).l], g:gradeOf(meta.grade), ps:progStat(n)};
+          due, paid, rest: due-paid, subs:sl.map(x=>x.label), g:gradeOf(meta.grade), ps:progStat(n), byS:sl};
 }
 function paintReport(){
   const d = reportData();
@@ -1823,8 +1843,10 @@ function paintReport(){
         :`<p class="empty">لم يُعلَّم أي درس في هذا الشهر.</p>`}
     </section>
     ${d.ps.t?`<section class="card"><h3>التقدم في الخطة</h3>
-      <div class="plan-row" style="margin-top:0"><div class="pl"><span>المنجز من كامل الخطة</span><b class="num">${d.ps.d} / ${d.ps.t} · ${d.ps.pct}٪</b></div>
-      <div class="ptrack"><div class="pfill" style="width:${d.ps.pct}%"></div></div></div></section>`:""}
+      ${d.byS.filter(x=>x.st.t).map(x=>`<div class="plan-row" style="margin-top:0">
+        <div class="pl"><span>${x.label}</span><b class="num">${x.st.d} / ${x.st.t} · ${x.st.pct}٪</b></div>
+        <div class="ptrack"><div class="pfill" style="width:${x.st.pct}%;background:${x.color}"></div></div></div>`).join("")}
+      </section>`:""}
     ${(d.due||d.paid)?`<section class="card"><h3>الحساب (د.ك)</h3>
       <div class="rp-money">
         <div><span>المستحق</span><b class="num">${kd(d.due)}</b></div>
@@ -1842,7 +1864,7 @@ function reportText(){
   if(d.canc.length) L.push(`الملغاة: ${d.canc.length}`);
   if(d.post.length) L.push(`المؤجَّلة: ${d.post.length}`);
   if(d.covered.length){ L.push("", "الدروس التي شُرحت:"); d.covered.forEach(c=>L.push(`• ${shortDate(c.date)}: ${c.t}`)); }
-  if(d.ps.t) L.push("", `التقدم في الخطة: ${d.ps.d} من ${d.ps.t} (${d.ps.pct}٪)`);
+  if(d.ps.t){ L.push("", "التقدم في الخطة:"); d.byS.filter(x=>x.st.t).forEach(x=>L.push(`• ${x.label}: ${x.st.d} من ${x.st.t} (${x.st.pct}٪)`)); }
   if(d.due||d.paid) L.push("", `المستحق: ${kd(d.due)} د.ك`, `المدفوع: ${kd(d.paid)} د.ك`, `المتبقي: ${kd(d.rest)} د.ك`);
   return L.join("\n");
 }
