@@ -44,7 +44,7 @@
   --sci:#C98A00;
   --g10:#F2760B;
   --g11:#E5184C;
-  --g12:#7B2FF7;
+  --g12:#0E9AA7;
   --warn:#E5184C;
   --on-violet:#FFFFFF;
   --grad:linear-gradient(135deg,#7B2FF7 0%,#B32FE0 55%,#FF4D9D 100%);
@@ -60,7 +60,7 @@
     --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
     --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
     --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
-    --g10:#FFA24D; --g11:#FF6B8E; --g12:#B98BFF;
+    --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC;
     --warn:#FF6B8E; --on-violet:#180F2B;
     --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
     --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
@@ -72,7 +72,7 @@
   --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
   --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
   --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
-  --g10:#FFA24D; --g11:#FF6B8E; --g12:#B98BFF;
+  --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC;
   --warn:#FF6B8E; --on-violet:#180F2B;
   --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
   --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
@@ -609,9 +609,9 @@ document.documentElement.lang = "ar";
 
 /* ============ ثوابت ============ */
 const GRADES = [
-  {v:"10", l:"الصف العاشر",       s:"١٠", c:"var(--g10)"},
-  {v:"11", l:"الحادي عشر",        s:"١١", c:"var(--g11)"},
-  {v:"12", l:"الثاني عشر",        s:"١٢", c:"var(--g12)"}
+  {v:"10", l:"الصف العاشر",       s:"10", c:"var(--g10)"},
+  {v:"11", l:"الحادي عشر",        s:"11", c:"var(--g11)"},
+  {v:"12", l:"الثاني عشر",        s:"12", c:"var(--g12)"}
 ];
 const SUBJECTS = [
   {v:"phys", l:"فيزياء",  c:"var(--phys)"},
@@ -1494,7 +1494,7 @@ function renderProg(){
 
 /* ---------- تبويب الإحصائيات ---------- */
 function renderStats(){
-  const all  = expand(firstDate(), winTo());
+  const all  = expand(firstDate(), TODAY);   // حتى اليوم فقط، بلا حصص مستقبلية
   const done = all.filter(l=>l.done);
   const canc = all.filter(l=>l._st==="c");
   const post = all.filter(l=>l._st==="p");
@@ -1517,12 +1517,11 @@ function renderStats(){
     <div class="tile"><div class="v num">${done.length}</div><div class="k">حصص منفَّذة</div></div>
     <div class="tile"><div class="v" style="font-size:19px">${durLabel(doneMin)}</div><div class="k">مجموع ساعات التدريس</div></div>
     <div class="tile"><div class="v num">${students.length}</div><div class="k">عدد الطلاب</div></div>
-    <div class="tile"><div class="v num">${all.length}</div><div class="k">إجمالي الحصص المسجَّلة</div></div>
   </div>
 
   <div class="card"><h3>منذ البداية</h3>
     <div class="nextline" style="border:0;padding:0">
-      من <b>${longDate(firstDate())}</b> حتى اليوم · مجموع الحصص <b class="num">${all.length}</b> بمدة <b>${durLabel(allMin)}</b>
+      من <b>${longDate(firstDate())}</b> حتى <b>${longDate(TODAY)}</b> · الحصص المسجَّلة <b class="num">${all.length}</b> بمدة <b>${durLabel(allMin)}</b>
       ${canc.length||post.length?`<br>ملغاة <b class="num">${canc.length}</b> · مؤجَّلة <b class="num">${post.length}</b>`:""}
     </div>
   </div>`;
@@ -1565,7 +1564,7 @@ function renderStats(){
     <p id="bk-msg" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0"></p>
   </div>`;
 
-  html += `<p class="hint">إجمالي البنود المسجَّلة: <b class="num">${lessons.length}</b>${lessons.filter(isRep).length?` — منها <b class="num">${lessons.filter(isRep).length}</b> متكرّرة`:""}</p>`;
+  html += `<p class="hint">بنود الجدول: <b class="num">${lessons.length}</b>${lessons.filter(isRep).length?` — منها <b class="num">${lessons.filter(isRep).length}</b> متكرّرة`:""}</p>`;
   main.innerHTML = html;
   wireBackup();
   wire();
