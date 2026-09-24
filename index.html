@@ -468,6 +468,7 @@ img,svg,canvas{max-width:100%;height:auto}
     </div>
   </header>
   <div class="remind" id="remind" hidden role="status"></div>
+  <div class="bkbar" id="updatebar" hidden role="status"></div>
   <div class="bkbar" id="bkbar" hidden role="status"></div>
   <main id="main"></main>
 </div>
@@ -603,6 +604,7 @@ img,svg,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<script src="./lib-default.js"></script>
 <script>
 document.documentElement.dir = "rtl";
 document.documentElement.lang = "ar";
@@ -639,7 +641,7 @@ const pad = n => String(n).padStart(2,"0");
 const key = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const parse = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
-const TODAY = key(new Date());
+let TODAY = key(new Date());
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mins = t => { const [h,m]=(t||"0:0").split(":").map(Number); return h*60+m; };
 const fmtT = t => { const [h,m]=(t||"0:0").split(":").map(Number);
@@ -676,350 +678,15 @@ function putLesson(l){
 }
 function delLesson(id){ lessons = lessons.filter(x=>x.id!==id); save(); render(); }
 
-/* خطط توزيع منهج الكيمياء — وزارة التربية، الكويت 2026/2027 (الفصل الأول) */
-const DEFAULT_LIB = {
- "chem-10": [
-  {
-   "id": "c10-01",
-   "t": "علم الكيمياء"
-  },
-  {
-   "id": "c10-02",
-   "t": "تطوّر النماذج الذرية"
-  },
-  {
-   "id": "c10-03",
-   "t": "النموذج الميكانيكي الموجي"
-  },
-  {
-   "id": "c10-04",
-   "t": "أعداد الكم"
-  },
-  {
-   "id": "c10-05",
-   "t": "قواعد الترتيب الإلكتروني في الذرات"
-  },
-  {
-   "id": "c10-06",
-   "t": "تطبيقات على قواعد الترتيب الإلكتروني"
-  },
-  {
-   "id": "c10-07",
-   "t": "تطوّر الجدول الدوري"
-  },
-  {
-   "id": "c10-08",
-   "t": "تقسيم العناصر"
-  },
-  {
-   "id": "c10-09",
-   "t": "الميول الدورية (التدرج في الخواص)"
-  },
-  {
-   "id": "c10-10",
-   "t": "الترتيب الإلكتروني وإلكترونات التكافؤ"
-  },
-  {
-   "id": "c10-11",
-   "t": "قاعدة الثمانية"
-  },
-  {
-   "id": "c10-12",
-   "t": "الرابطة الأيونية"
-  },
-  {
-   "id": "c10-13",
-   "t": "خواص المركبات الأيونية"
-  },
-  {
-   "id": "c10-14",
-   "t": "الروابط التساهمية"
-  },
-  {
-   "id": "c10-15",
-   "t": "خواص المركبات التساهمية"
-  },
-  {
-   "id": "c10-16",
-   "t": "الرابطة التناسقية"
-  }
- ],
- "chem-11": [
-  {
-   "id": "c11-01",
-   "t": "الأفلاك الجزيئية"
-  },
-  {
-   "id": "c11-02",
-   "t": "الأفلاك المهجنة"
-  },
-  {
-   "id": "c11-03",
-   "t": "تطبيقات على التداخل والتهجين"
-  },
-  {
-   "id": "c11-04",
-   "t": "الماء كمذيب قوي"
-  },
-  {
-   "id": "c11-05",
-   "t": "المحاليل المائية"
-  },
-  {
-   "id": "c11-06",
-   "t": "الأنظمة المائية غير المتجانسة (معلَّق)"
-  },
-  {
-   "id": "c11-07",
-   "t": "التفاعلات في المحاليل المائية (معلَّق)"
-  },
-  {
-   "id": "c11-08",
-   "t": "العوامل المؤثرة على الذوبانية في المحاليل"
-  },
-  {
-   "id": "c11-09",
-   "t": "تركيب المحاليل"
-  },
-  {
-   "id": "c11-10",
-   "t": "الخواص المجمعة للمحاليل"
-  },
-  {
-   "id": "c11-11",
-   "t": "التغيرات الحرارية"
-  },
-  {
-   "id": "c11-12",
-   "t": "قانون هس"
-  }
- ],
- "chem-12": [
-  {
-   "id": "c12-01",
-   "t": "خواص الغازات"
-  },
-  {
-   "id": "c12-02",
-   "t": "العوامل التي تؤثر في ضغط الغاز"
-  },
-  {
-   "id": "c12-03",
-   "t": "قوانين الغازات"
-  },
-  {
-   "id": "c12-04",
-   "t": "الغازات المثالية"
-  },
-  {
-   "id": "c12-05",
-   "t": "الجسيمات الغازية: مخاليطها وحركتها"
-  },
-  {
-   "id": "c12-06",
-   "t": "سرعة التفاعل"
-  },
-  {
-   "id": "c12-07",
-   "t": "التفاعلات العكوسة والاتزان الكيميائي"
-  },
-  {
-   "id": "c12-08",
-   "t": "الانتروبي: تحديد إمكانية حدوث تفاعل (معلَّق)"
-  },
-  {
-   "id": "c12-09",
-   "t": "وصف الأحماض والقواعد"
-  },
-  {
-   "id": "c12-10",
-   "t": "تسمية الأحماض والقواعد"
-  },
-  {
-   "id": "c12-11",
-   "t": "كاتيونات الهيدروجين والحموضة"
-  },
-  {
-   "id": "c12-12",
-   "t": "قوة الأحماض والقواعد"
-  }
- ],
- "phys-10": [
-  {
-   "id": "p10-01",
-   "t": "علم الفيزياء"
-  },
-  {
-   "id": "p10-02",
-   "t": "الكميات الفيزيائية"
-  },
-  {
-   "id": "p10-03",
-   "t": "الكميات الفيزيائية العددية والمتجهة"
-  },
-  {
-   "id": "p10-04",
-   "t": "معادلات الحركة المتسارعة بانتظام في خط مستقيم"
-  },
-  {
-   "id": "p10-05",
-   "t": "السقوط الحر"
-  },
-  {
-   "id": "p10-06",
-   "t": "خصائص المتجهات"
-  },
-  {
-   "id": "p10-07",
-   "t": "جمع المتجهات وتحليلها"
-  },
-  {
-   "id": "p10-08",
-   "t": "ضرب المتجهات"
-  },
-  {
-   "id": "p10-09",
-   "t": "حركة المقذوفات"
-  }
- ],
- "phys-11": [
-  {
-   "id": "p11-01",
-   "t": "الكميات العددية والكميات المتجهة"
-  },
-  {
-   "id": "p11-02",
-   "t": "تحليل المتجهات"
-  },
-  {
-   "id": "p11-03",
-   "t": "حركة القذيفة"
-  },
-  {
-   "id": "p11-04",
-   "t": "وصف الحركة الدائرية"
-  },
-  {
-   "id": "p11-05",
-   "t": "القوة الجاذبة المركزية"
-  },
-  {
-   "id": "p11-06",
-   "t": "مركز الثقل"
-  },
-  {
-   "id": "p11-07",
-   "t": "مركز الكتلة"
-  },
-  {
-   "id": "p11-08",
-   "t": "تحديد موضع مركز الكتلة أو مركز الثقل"
-  }
- ],
- "phys-12": [
-  {
-   "id": "p12-01",
-   "t": "الشغل"
-  },
-  {
-   "id": "p12-02",
-   "t": "الشغل والطاقة"
-  },
-  {
-   "id": "p12-03",
-   "t": "حفظ بقاء الطاقة"
-  },
-  {
-   "id": "p12-04",
-   "t": "عزم الدوران (عزم القوة)"
-  },
-  {
-   "id": "p12-05",
-   "t": "القصور الذاتي الدوراني"
-  },
-  {
-   "id": "p12-06",
-   "t": "كمية الحركة والدفع"
-  },
-  {
-   "id": "p12-07",
-   "t": "حفظ (بقاء) كمية الحركة والتصادمات"
-  }
- ],
- "sci-10": [
-  {
-   "id": "s10-01",
-   "t": "مدخل إلى علم الفيزياء"
-  },
-  {
-   "id": "s10-02",
-   "t": "الكميات الفيزيائية"
-  },
-  {
-   "id": "s10-03",
-   "t": "الكميات الفيزيائية العددية والمتجهة"
-  },
-  {
-   "id": "s10-04",
-   "t": "معادلات الحركة المتسارعة بانتظام في خط مستقيم"
-  },
-  {
-   "id": "s10-05",
-   "t": "السقوط الحر"
-  },
-  {
-   "id": "s10-06",
-   "t": "علم الكيمياء"
-  },
-  {
-   "id": "s10-07",
-   "t": "تطور النماذج الذرية"
-  },
-  {
-   "id": "s10-08",
-   "t": "أعداد الكم"
-  },
-  {
-   "id": "s10-09",
-   "t": "قواعد الترتيب الإلكتروني في الذرات"
-  },
-  {
-   "id": "s10-10",
-   "t": "تطبيقات على قواعد الترتيب الإلكتروني"
-  },
-  {
-   "id": "s10-11",
-   "t": "تطور الجدول الدوري"
-  },
-  {
-   "id": "s10-12",
-   "t": "الميول الدورية (التدرج في الخواص)"
-  },
-  {
-   "id": "s10-13",
-   "t": "الترتيب الإلكتروني"
-  },
-  {
-   "id": "s10-14",
-   "t": "الرابطة الأيونية"
-  },
-  {
-   "id": "s10-15",
-   "t": "خواص المركبات الأيونية"
-  },
-  {
-   "id": "s10-16",
-   "t": "الرابطة التساهمية"
-  }
- ]
-};
+/* خطط توزيع منهج الكيمياء — وزارة التربية، الكويت 2026/2027 (الفصل الأول)
+   DEFAULT_LIB انتقلت إلى lib-default.js، المُحمَّل بوسم <script> قبل هذا السكربت */
 
 /* ============ مكتبة الدروس والتقدم (محلي) ============ */
 const LIB_LS  = "hisas_lib_v1";
 const LIB_VER_LS = "hisas_lib_ver", LIB_VER = "2"; // ارفع الرقم عند تحديث الخطط الجاهزة    // دروس كل (مادة + صف) مشتركة
 const PROG_LS = "hisas_prog_v1";   // ما أنجزه كل طالب: {اسم: {رقم الدرس: التاريخ}}
 const MONEY_LS = "hisas_money_v1"; // {due:{اسم:مبلغ}, paid:{اسم:مبلغ}}
-let lib = {}, prog = {}, money = {due:{}, paid:{}};
+let lib = {}, prog = {}, money = {due:{}, paid:{}, pays:[]};
 
 const libKey = (subj, grade) => subj + "-" + grade;
 function loadLib(){
@@ -1042,20 +709,45 @@ function saveProg(){ try{ localStorage.setItem(PROG_LS, JSON.stringify(prog)); }
 function loadMoney(){
   try{
     const m = JSON.parse(localStorage.getItem(MONEY_LS)||"null");
-    if(m){ money = {due:m.due||{}, paid:m.paid||{}}; return; }
+    if(m){ money = {due:m.due||{}, paid:m.paid||{}, pays:Array.isArray(m.pays)?m.pays:[]}; return; }
   }catch(e){}
-  /* ترحيل من النسخة السابقة: تُجمع الدفعات القديمة في خانة المدفوع */
+  /* ترحيل من النسخة السابقة: تُجمع الدفعات القديمة في خانة المدفوع، وتُحفظ أيضًا كسجل دفعات */
   try{
     const old = JSON.parse(localStorage.getItem("hisas_pay_v1")||"null");
     if(old && Array.isArray(old.pays)){
-      const paid = {};
-      old.pays.forEach(x=>{ if(x && x.student) paid[x.student] = (paid[x.student]||0) + (Number(x.amount)||0); });
-      money = {due:{}, paid};
+      const paid = {}, pays = [];
+      old.pays.forEach(x=>{
+        if(!x || !x.student) return;
+        const amt = Number(x.amount)||0;
+        paid[x.student] = (paid[x.student]||0) + amt;
+        pays.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), student:x.student, amount:amt, date:x.date||TODAY});
+      });
+      money = {due:{}, paid, pays};
       saveMoney();
     }
   }catch(e){}
 }
 function saveMoney(){ try{ localStorage.setItem(MONEY_LS, JSON.stringify(money)); }catch(e){} }
+
+/* سجل الدفعات: كل دفعة بمبلغها وتاريخها، والإجمالي في money.paid يبقى مصدر «المتبقي» */
+function paysOf(n){ return money.pays.filter(p=>p.student===n).sort((a,b)=>b.date.localeCompare(a.date)); }
+function addPayment(n, amt, ds){
+  amt = Math.round((Number(amt)||0)*1000)/1000;
+  if(!n || !(amt>0)) return;
+  money.pays.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), student:n, amount:amt, date:ds||TODAY});
+  money.paid[n] = Math.max(0, (Number(money.paid[n])||0) + amt);
+  saveMoney();
+  render();
+}
+function delPayment(id){
+  const i = money.pays.findIndex(p=>p.id===id);
+  if(i<0) return;
+  const p = money.pays[i];
+  money.pays.splice(i,1);
+  money.paid[p.student] = Math.max(0, (Number(money.paid[p.student])||0) - (Number(p.amount)||0));
+  saveMoney();
+  render();
+}
 
 const kd = n => (Math.round((Number(n)||0)*1000)/1000).toFixed(3);
 const firstDate = () => { const d = lessons.map(l=>l.date).filter(Boolean).sort(); return d.length ? d[0] : TODAY; };
@@ -1071,6 +763,29 @@ function allStudents(){
   const out = [];
   lessons.forEach(l=>{ const n = l.student||"بدون اسم"; if(!out.includes(n)) out.push(n); });
   return out;
+}
+/* إعادة تسمية طالب: تنقل حصصه وخطته ومتابعته وحساباته معه.
+   إن كان الاسم الجديد لطالب موجود أصلًا، تُدمَج البيانات فيه (بيانات الهدف تُرجَّح عند التعارض). */
+function mergeMoney(oldName, newName){
+  if(oldName === newName) return;
+  const dueOld = money.due[oldName], paidOld = money.paid[oldName];
+  if(dueOld !== undefined){ money.due[newName] = (Number(money.due[newName])||0) + (Number(dueOld)||0); delete money.due[oldName]; }
+  if(paidOld !== undefined){ money.paid[newName] = (Number(money.paid[newName])||0) + (Number(paidOld)||0); delete money.paid[oldName]; }
+  money.pays.forEach(p=>{ if(p.student===oldName) p.student = newName; });
+}
+function renameStudent(oldName, newName){
+  newName = (newName||"").trim();
+  if(!newName || newName === oldName) return;
+  lessons = lessons.map(l => (l.student||"بدون اسم")===oldName ? Object.assign({}, l, {student:newName}) : l);
+  save();
+  if(prog[oldName]){
+    prog[newName] = Object.assign({}, prog[oldName], prog[newName]||{});
+    delete prog[oldName];
+    saveProg();
+  }
+  mergeMoney(oldName, newName);
+  saveMoney();
+  render();
 }
 /* كل المواد التي يدرسها الطالب، الأحدث أولًا */
 function studentSubjects(n){
@@ -1367,6 +1082,9 @@ function renderStudents(){
         <div class="stu-h">
           <span class="avatar" style="background:${g.c}">${g.s}</span>
           <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subjs}</span></span>
+          <button class="iconbtn" type="button" data-rename="${esc(n)}" aria-label="إعادة تسمية الطالب">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
+          </button>
           <span class="cnt"><b class="num">${ls.length}</b><span>حصة</span></span>
         </div>
         <div class="nextline">
@@ -1378,9 +1096,15 @@ function renderStudents(){
       </div>`;
     });
   }
-  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}.</p>`;
+  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}. لتصحيح اسم مكتوب خطأ اضغط ✏️ — تنتقل معه كل حصصه وخطته وحساباته.</p>`;
   main.innerHTML = html;
   main.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{ state.subjFilter=b.dataset.sf; render(); });
+  main.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
+    const old = b.dataset.rename;
+    const nn = prompt("الاسم الجديد لهذا الطالب:", old);
+    if(nn===null) return;
+    renameStudent(old, nn.trim());
+  });
   wire();
 }
 
@@ -1425,10 +1149,18 @@ function renderPay(){
         <label>المدفوع<input type="number" inputmode="decimal" min="0" step="0.5" data-paid="${esc(n)}" value="${money.paid[n]!==undefined?money.paid[n]:""}" placeholder="0"></label>
         <div class="rest ${hasDue?(cleared?"clear":"owed"):""}"><span>المتبقي</span><b class="num">${hasDue?kd(r):"—"}</b></div>
       </div>
+      <div class="pay-row">
+        <label>دفعة جديدة<input type="number" inputmode="decimal" min="0" step="0.5" data-newpay placeholder="0"></label>
+        <input type="date" data-newpaydate value="${TODAY}">
+        <button class="minibtn solid" type="button" data-addpay="${esc(n)}">+ سجّل دفعة</button>
+      </div>
+      ${paysOf(n).length?`<div class="paylist">
+        ${paysOf(n).map(p=>`<div><span class="num">${shortDate(p.date)}</span><b>${kd(p.amount)} د.ك</b><button class="x" type="button" data-delpay="${p.id}" aria-label="حذف الدفعة">×</button></div>`).join("")}
+      </div>`:""}
     </div>`;
   });
 
-  html += `<p class="hint">المبالغ تُكتب يدويًا كما تتفق مع كل طالب — كورسًا كاملًا أو بالحصة. عدد الحصص للاطلاع فقط ولا يدخل في الحساب.</p>`;
+  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. عدد الحصص للاطلاع فقط ولا يدخل في الحساب.</p>`;
   main.innerHTML = html;
 
   main.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{
@@ -1440,6 +1172,26 @@ function renderPay(){
     const n = i.dataset.paid, v = Number(i.value);
     if(i.value==="" ) delete money.paid[n]; else money.paid[n] = Math.max(0, v||0);
     saveMoney(); render();
+  });
+  main.querySelectorAll("[data-addpay]").forEach(b=>b.onclick=()=>{
+    const n = b.dataset.addpay;
+    const card = b.closest(".stu-card");
+    const amtEl = card.querySelector("[data-newpay]");
+    const dateEl = card.querySelector("[data-newpaydate]");
+    const amt = Number(amtEl.value);
+    if(!(amt>0)){ amtEl.focus(); return; }
+    addPayment(n, amt, dateEl.value || TODAY);
+  });
+  main.querySelectorAll("[data-delpay]").forEach(b=>b.onclick=()=>{
+    const id = b.dataset.delpay;
+    const p = money.pays.find(x=>x.id===id);
+    askConfirm({
+      title:"حذف دفعة",
+      text:"سيُحذف هذا السجل، ويُخصَم مبلغه من «المدفوع».",
+      what: p ? (p.student+" — "+kd(p.amount)+" د.ك · "+shortDate(p.date)) : "",
+      ok:"حذف",
+      run: ()=>delPayment(id)
+    });
   });
   wire();
 }
@@ -1574,6 +1326,50 @@ function renderStats(){
 function backupBlob(){
   return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money }, null, 1);
 }
+/* استيراد نسخة احتياطية: دمج إضافي (آمن) أو استبدال كامل (يمسح بيانات الجهاز الحالية) */
+function doImport(data, replace){
+  const inc = Array.isArray(data) ? data : data.lessons;
+  const msg = document.getElementById("bk-msg");
+  let addedCount = 0;
+  if(replace){
+    lessons = Array.isArray(inc) ? inc.slice() : [];
+    lib   = (data.lib  && typeof data.lib==="object")  ? data.lib  : {};
+    prog  = (data.prog && typeof data.prog==="object") ? data.prog : {};
+    money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[]} : {due:{}, paid:{}, pays:[]};
+    addedCount = lessons.length;
+  }else{
+    const have = new Set(lessons.map(l=>l.id));
+    const added = (inc||[]).filter(l=>l && l.id && !have.has(l.id));
+    lessons = lessons.concat(added);
+    addedCount = added.length;
+
+    if(data.lib && typeof data.lib === "object"){
+      Object.keys(data.lib).forEach(k=>{
+        const cur = lib[k] || [], ids = new Set(cur.map(x=>x.id));
+        (data.lib[k]||[]).forEach(x=>{ if(x && x.id && !ids.has(x.id)) cur.push(x); });
+        lib[k] = cur;
+      });
+    }
+    if(data.prog && typeof data.prog === "object"){
+      Object.keys(data.prog).forEach(n=>{ prog[n] = Object.assign({}, data.prog[n], prog[n]||{}); });
+    }
+    if(data.money){
+      money.due = Object.assign({}, data.money.due||{}, money.due);
+      money.paid = Object.assign({}, data.money.paid||{}, money.paid);
+      if(Array.isArray(data.money.pays)){
+        const havePay = new Set(money.pays.map(p=>p.id));
+        data.money.pays.forEach(p=>{ if(p && p.id && !havePay.has(p.id)) money.pays.push(p); });
+      }
+    }
+  }
+  save(); saveLib(); saveProg(); saveMoney();
+  if(msg) msg.textContent = replace
+    ? "تم الاستبدال الكامل — " + addedCount + " حصة."
+    : "تم دمج " + addedCount + " حصة جديدة، مع الخطة والحسابات.";
+  const file = document.getElementById("bk-file");
+  if(file) file.value = "";
+  render();
+}
 function wireBackup(){
   const msg = document.getElementById("bk-msg");
   const file = document.getElementById("bk-file");
@@ -1605,32 +1401,15 @@ function wireBackup(){
       try{ data = JSON.parse(r.result); }catch(e){ msg.textContent = "الملف غير صالح."; return; }
       const inc = Array.isArray(data) ? data : data.lessons;
       if(!Array.isArray(inc)){ msg.textContent = "الملف لا يحتوي حصصًا."; return; }
-
-      const have = new Set(lessons.map(l=>l.id));
-      const added = inc.filter(l=>l && l.id && !have.has(l.id));
-      lessons = lessons.concat(added);
-      save();
-
-      if(data.lib && typeof data.lib === "object"){
-        Object.keys(data.lib).forEach(k=>{
-          const cur = lib[k] || [], ids = new Set(cur.map(x=>x.id));
-          (data.lib[k]||[]).forEach(x=>{ if(x && x.id && !ids.has(x.id)) cur.push(x); });
-          lib[k] = cur;
-        });
-        saveLib();
-      }
-      if(data.prog && typeof data.prog === "object"){
-        Object.keys(data.prog).forEach(n=>{ prog[n] = Object.assign({}, data.prog[n], prog[n]||{}); });
-        saveProg();
-      }
-      if(data.money){
-        money.due = Object.assign({}, data.money.due||{}, money.due);
-        money.paid = Object.assign({}, data.money.paid||{}, money.paid);
-        saveMoney();
-      }
-      msg.textContent = "تم استيراد " + added.length + " حصة، مع الخطة والحسابات.";
-      file.value = "";
-      render();
+      askConfirm({
+        title: "استيراد نسخة احتياطية",
+        text: "اختر طريقة الاستيراد.",
+        what: "الملف يحتوي " + inc.length + " حصة. الاستبدال الكامل يمسح بيانات هذا الجهاز الحالية ولا يمكن التراجع عنه.",
+        ok: "استبدال بالكامل",
+        ok2: "دمج مع الحالي (آمن)",
+        run:  ()=>doImport(data, true),
+        run2: ()=>doImport(data, false)
+      });
     };
     r.readAsText(f);
   };
@@ -1984,6 +1763,13 @@ function updateRemind(){
     : `🔔 بعد ${inTxt(nx.left)}: <b>${esc(nx.l.student||"بدون اسم")}</b> · ${fmtT(nx.l.from)}`;
 }
 function tick(){
+  const nowKey = key(new Date());
+  if(nowKey !== TODAY){
+    /* تغيّر اليوم واللوحة مفتوحة (مثلًا تُركت مفتوحة من الأمس) — أعِد بناء الشاشة كاملة */
+    TODAY = nowKey;
+    render();
+    return;
+  }
   updateRemind();
   const h = document.getElementById("hero");
   if(h) h.outerHTML = heroHTML();
@@ -2158,11 +1944,35 @@ load();
 loadLib();
 loadMoney();
 render();
+
+/* طلب تخزين دائم: يقلّل احتمال حذف المتصفح لبيانات الموقع تلقائيًا عند ضغط المساحة.
+   لا يظهر أي مربع حوار في الغالب على تطبيق مثبَّت على الشاشة الرئيسية؛ تجاهل الرفض بصمت. */
+if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
 </script>
 
 <script>
+/* تحديث السكربت: يعرض شريطًا فوريًا بدل انتظار الفتح الثاني */
+function showUpdateBar(){
+  const el = document.getElementById("updatebar");
+  if(!el) return;
+  el.hidden = false;
+  el.innerHTML = `<p>🔄 <b>يوجد تحديث جديد للتطبيق.</b></p>
+    <button class="minibtn solid" type="button" id="upd-now">تحديث الآن</button>`;
+  document.getElementById("upd-now").onclick = ()=>location.reload();
+}
 if("serviceWorker" in navigator){
-  window.addEventListener("load", ()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./sw.js").then(reg=>{
+      reg.addEventListener("updatefound", ()=>{
+        const sw = reg.installing;
+        if(!sw) return;
+        sw.addEventListener("statechange", ()=>{
+          /* installed + وجود متحكِّم سابق = نسخة أُحلَّت محل نسخة كانت تعمل فعلًا، لا أول تثبيت */
+          if(sw.state==="installed" && navigator.serviceWorker.controller) showUpdateBar();
+        });
+      });
+    }).catch(()=>{});
+  });
 }
 </script>
 </body>
