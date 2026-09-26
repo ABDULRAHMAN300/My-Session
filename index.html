@@ -691,7 +691,7 @@ function shortDate(s){ const d = parse(s); return d.getDate() + " " + MONTHS[d.g
 const LS = "hisas_v1";
 let lessons = [];
 function load(){ try{ lessons = JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ lessons=[]; } }
-function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} bumpMemo(); }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} bumpMemo(); cloudPush(); }
 function putLesson(l){
   const i = lessons.findIndex(x=>x.id===l.id);
   if(i>=0) lessons[i]=l; else lessons.push(l);
@@ -724,8 +724,8 @@ function loadLib(){
   }
   try{ prog = JSON.parse(localStorage.getItem(PROG_LS)||"{}") || {}; }catch(e){ prog = {}; }
 }
-function saveLib(){ try{ localStorage.setItem(LIB_LS, JSON.stringify(lib)); }catch(e){} }
-function saveProg(){ try{ localStorage.setItem(PROG_LS, JSON.stringify(prog)); }catch(e){} }
+function saveLib(){ try{ localStorage.setItem(LIB_LS, JSON.stringify(lib)); }catch(e){} cloudPush(); }
+function saveProg(){ try{ localStorage.setItem(PROG_LS, JSON.stringify(prog)); }catch(e){} cloudPush(); }
 
 function loadMoney(){
   try{
@@ -748,7 +748,7 @@ function loadMoney(){
     }
   }catch(e){}
 }
-function saveMoney(){ try{ localStorage.setItem(MONEY_LS, JSON.stringify(money)); }catch(e){} }
+function saveMoney(){ try{ localStorage.setItem(MONEY_LS, JSON.stringify(money)); }catch(e){} cloudPush(); }
 
 /* سجل الدفعات: كل دفعة بمبلغها وتاريخها، والإجمالي في money.paid يبقى مصدر «المتبقي» */
 function paysOf(n){ return money.pays.filter(p=>p.student===n).sort((a,b)=>b.date.localeCompare(a.date)); }
@@ -1373,9 +1373,24 @@ function renderStats(){
   } else html += `<p class="empty" style="padding:4px 0">لا بيانات بعد.</p>`;
   html += `</div>`;
 
-  html += `<div class="card"><h3>النسخة الاحتياطية</h3>
+  html += `<div class="card"><h3>النسخ الاحتياطي السحابي</h3>
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
-      البيانات محفوظة في هذا الجهاز فقط. نزّل نسخة بين حين وآخر، واستوردها عند تغيير الجهاز.</p>
+      نسخة تلقائية صامتة في الخلفية بعد كل تعديل. احتفظ برمز جهازك — به وحده تُسترجع بياناتك على جهاز آخر.
+      لا تشاركه إلا مع نفسك.</p>
+    <div class="pay-row">
+      <input type="text" id="cloud-code" readonly value="${esc(deviceCode())}" style="flex:1;min-width:150px;font-family:var(--font-d)">
+      <button class="minibtn" type="button" id="cloud-copy">نسخ الرمز</button>
+    </div>
+    <div class="pay-row" style="margin-top:10px">
+      <input type="text" id="cloud-restore-code" placeholder="الصق رمز جهاز آخر هنا" style="flex:1;min-width:150px">
+      <button class="minibtn solid" type="button" id="cloud-restore">استرجاع</button>
+    </div>
+    <p id="cloud-msg" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0"></p>
+  </div>`;
+
+  html += `<div class="card"><h3>نسخة ملف محلية</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
+      إضافة إلى النسخ السحابي أعلاه — ملف تنزّله بنفسك وتحفظه أينما تريد.</p>
     <div class="pay-row">
       <button class="minibtn solid" type="button" id="bk-save">تنزيل نسخة</button>
       <button class="minibtn" type="button" id="bk-load">استيراد من ملف</button>
@@ -1386,6 +1401,7 @@ function renderStats(){
 
   html += `<p class="hint">بنود الجدول: <b class="num">${lessons.length}</b>${lessons.filter(isRep).length?` — منها <b class="num">${lessons.filter(isRep).length}</b> متكرّرة`:""}</p>`;
   main.innerHTML = html;
+  wireCloud();
   wireBackup();
   wire();
 }
@@ -1393,6 +1409,74 @@ function renderStats(){
 /* ---------- التصدير والاستيراد ---------- */
 function backupBlob(){
   return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money }, null, 1);
+}
+
+/* ---------- النسخ الاحتياطي السحابي (Supabase) ----------
+   رمز جهاز عشوائي عالي الإنتروبيا هو المفتاح الوحيد للوصول لصف بياناته؛
+   لا سياسات قراءة/كتابة مباشرة على الجدول، فقط عبر دالتين تتعاملان مع
+   الصف المطابق للرمز فحسب. الرفع صامت ومؤجَّل (debounce) بعد كل تعديل. */
+const CLOUD_URL  = "https://dwsyctxhfbuzpcjilmwq.supabase.co";
+const CLOUD_ANON = "sb_publishable_xDrnFMfYxuqI008QnSZ8yA_JoKKMqzg";
+const DEVICE_LS  = "hisas_device_code";
+function deviceCode(){
+  let c = null;
+  try{ c = localStorage.getItem(DEVICE_LS); }catch(e){}
+  if(!c){
+    c = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b=>b.toString(36).padStart(2,"0")).join("").slice(0,20);
+    try{ localStorage.setItem(DEVICE_LS, c); }catch(e){}
+  }
+  return c;
+}
+async function cloudCall(fn, body){
+  const res = await fetch(CLOUD_URL + "/rest/v1/rpc/" + fn, {
+    method: "POST",
+    headers: {"Content-Type":"application/json", "apikey":CLOUD_ANON, "Authorization":"Bearer "+CLOUD_ANON},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error("cloud "+res.status);
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+async function cloudPull(code){ return cloudCall("hisas_backup_get", {p_code: code}); }
+let _cloudTimer = null;
+function cloudPush(){
+  if(typeof crypto === "undefined" || !crypto.getRandomValues) return; // بيئة لا تدعم التوليد الآمن للرمز
+  if(_cloudTimer) clearTimeout(_cloudTimer);
+  _cloudTimer = setTimeout(()=>{
+    cloudCall("hisas_backup_set", {p_code: deviceCode(), p_data: JSON.parse(backupBlob())}).catch(()=>{
+      /* صامت — سيُعاد المحاولة تلقائيًا عند أي تعديل لاحق */
+    });
+  }, 2500);
+}
+async function cloudRestore(code){
+  const msg = document.getElementById("cloud-msg");
+  if(msg) msg.textContent = "جارٍ الاسترجاع…";
+  try{
+    const data = await cloudPull(code);
+    if(!data){ if(msg) msg.textContent = "لا توجد نسخة بهذا الرمز."; return; }
+    try{ localStorage.setItem(DEVICE_LS, code); }catch(e){}
+    doImport(data, true);
+    if(msg) msg.textContent = "تم الاسترجاع بنجاح. سيُرفَع أي تعديل لاحق بهذا الرمز.";
+  }catch(e){ if(msg) msg.textContent = "تعذّر الاتصال بالخادم — تحقق من الإنترنت."; }
+}
+function wireCloud(){
+  const codeEl = document.getElementById("cloud-code");
+  if(!codeEl) return;
+  const msg = document.getElementById("cloud-msg");
+  document.getElementById("cloud-copy").onclick = async ()=>{
+    try{ await navigator.clipboard.writeText(codeEl.value); msg.textContent = "نُسخ الرمز."; }
+    catch(e){ codeEl.select(); msg.textContent = "انسخه يدويًا (تم تحديده)."; }
+  };
+  document.getElementById("cloud-restore").onclick = ()=>{
+    const code = document.getElementById("cloud-restore-code").value.trim();
+    if(!code){ msg.textContent = "الصق الرمز أولًا."; return; }
+    askConfirm({
+      title: "استرجاع نسخة سحابية",
+      text: "سيستبدل هذا كل بيانات هذا الجهاز الحالية بالنسخة المرتبطة بهذا الرمز. لا يمكن التراجع.",
+      ok: "استرجاع واستبدال",
+      run: ()=>cloudRestore(code)
+    });
+  };
 }
 /* استيراد نسخة احتياطية: دمج إضافي (آمن) أو استبدال كامل (يمسح بيانات الجهاز الحالية) */
 function doImport(data, replace){
@@ -2045,6 +2129,7 @@ load();
 loadLib();
 loadMoney();
 render();
+cloudPush(); // نسخة سحابية أولى فور الفتح، حتى دون أي تعديل جديد
 
 /* طلب تخزين دائم: يقلّل احتمال حذف المتصفح لبيانات الموقع تلقائيًا عند ضغط المساحة.
    لا يظهر أي مربع حوار في الغالب على تطبيق مثبَّت على الشاشة الرئيسية؛ تجاهل الرفض بصمت. */
