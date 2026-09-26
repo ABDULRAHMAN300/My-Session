@@ -355,10 +355,23 @@ body{
 .ptrack{height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden}
 .pfill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--mint),#43D58B);transition:width .35s ease}
 .plan-list{margin-top:12px;max-height:44vh;overflow-y:auto}
-.pitem{display:flex;align-items:center;gap:12px;padding:10px 2px;border-top:1px solid var(--line-soft)}
+.pitem{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line-soft)}
 .pitem span{flex:1;min-width:0;font-size:14px;word-wrap:break-word}
-.pitem.on span{color:var(--ink-soft);text-decoration:line-through}
-.pitem .x{border:0;background:transparent;color:var(--ink-soft);font-size:14px;padding:6px}
+.pitem.on span,.pitem.done span{color:var(--ink-soft);text-decoration:line-through}
+.pitem.progress span{color:var(--warn)}
+.pitem .x{border:0;background:transparent;color:var(--ink-soft);font-size:14px;padding:6px;flex-shrink:0}
+/* إعادة ترتيب دروس الخطة */
+.pitem .reorder{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
+.pitem .reorder button{width:22px;height:17px;font-size:9px;line-height:1;padding:0;border:0;
+  background:transparent;color:var(--ink-soft);border-radius:5px}
+.pitem .reorder button:disabled{opacity:.2}
+/* حالة الدرس: لم يبدأ / جاري الشرح / مكتمل */
+.statuspill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:11px;
+  font-family:var(--font-d);background:var(--surface);color:var(--ink-soft);flex-shrink:0;white-space:nowrap}
+.statuspill.progress{background:color-mix(in srgb,var(--warn) 16%,transparent);
+  border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
+.statuspill.done{background:color-mix(in srgb,var(--chem) 15%,transparent);
+  border-color:color-mix(in srgb,var(--chem) 40%,transparent);color:var(--chem)}
 
 /* التقرير الشهري */
 .report{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -510,9 +523,13 @@ img,svg,canvas{max-width:100%;height:auto}
       <label for="f-date">التاريخ</label>
       <input type="date" id="f-date">
     </div>
-    <div class="field two">
-      <div><label for="f-from">من الساعة</label><input type="time" id="f-from" value="16:00" step="300"></div>
-      <div><label for="f-to">إلى الساعة</label><input type="time" id="f-to" value="17:30" step="300"></div>
+    <div class="field">
+      <label for="f-from">من الساعة</label>
+      <input type="time" id="f-from" value="16:00" step="300">
+    </div>
+    <div class="field">
+      <label for="f-dur">مدة الحصة</label>
+      <div class="opts" id="f-dur"></div>
     </div>
     <div class="field">
       <label for="f-rep">التكرار</label>
@@ -648,6 +665,10 @@ const fmtT = t => { const [h,m]=(t||"0:0").split(":").map(Number);
   const ap = h<12 ? "ص" : "م"; const hh = h%12===0 ? 12 : h%12;
   return hh + ":" + pad(m) + " " + ap; };
 const durOf = l => Math.max(0, mins(l.to) - mins(l.from));
+/* مدة الحصة تُختار (ساعة/ساعة ونصف/ساعتان) بدل وقت نهاية يدوي */
+const addMin = (t, m) => { const tot = (mins(t)+m+1440)%1440; return pad(Math.floor(tot/60)) + ":" + pad(tot%60); };
+const DUR_OPTS = [60, 90, 120];
+const nearestDur = m => DUR_OPTS.reduce((a,b)=> Math.abs(b-m) < Math.abs(a-m) ? b : a, DUR_OPTS[0]);
 const durLabel = m => {
   const h = Math.floor(m/60), r = m%60;
   const hw = h===1 ? "ساعة" : h===2 ? "ساعتان" : (h>=3 && h<=10) ? h+" ساعات" : h+" ساعة";
@@ -804,15 +825,23 @@ function libOf(n){
   return studentSubjects(n).reduce((a,x)=>a.concat(libOfKey(x.key)), []);
 }
 function progOf(n){ return prog[n] || {}; }
+/* حالة كل درس بالنسبة لطالب: القيمة القديمة (نص تاريخ) تعني "مكتمل" ضمنيًا؛
+   الشكل الجديد كائن {date, status} حيث status: "progress" أو "done". */
+function entryOf(pr, id){
+  const v = pr[id];
+  if(!v) return null;
+  return typeof v === "string" ? {date:v, status:"done"} : v;
+}
 function statOf(items, pr){
-  const d = items.filter(x=>pr[x.id]).length;
-  return {t:items.length, d, pct: items.length ? Math.round(d*100/items.length) : 0};
+  let d = 0, p = 0;
+  items.forEach(x=>{ const e = entryOf(pr, x.id); if(e){ if(e.status==="done") d++; else p++; } });
+  return {t:items.length, d, p, pct: items.length ? Math.round(d*100/items.length) : 0};
 }
 function progStat(n){ return statOf(libOf(n), progOf(n)); }
 function progStatKey(n, k){ return statOf(libOfKey(k), progOf(n)); }
-function markLesson(student, itemId, ds){
+function markLesson(student, itemId, ds, status){
   const pr = Object.assign({}, prog[student]||{});
-  if(ds) pr[itemId] = ds; else delete pr[itemId];
+  if(ds) pr[itemId] = {date:ds, status: status || "done"}; else delete pr[itemId];
   prog[student] = pr;
   saveProg();
 }
@@ -881,13 +910,14 @@ function expand(from, to){
 const winFrom = () => key(addDays(new Date(), -HORIZON_BACK));
 const winTo   = () => key(addDays(new Date(),  HORIZON_FWD));
 
-/* تعارض المواعيد داخل اليوم */
+/* تعارض المواعيد داخل اليوم: أي حصتين تبدآن خلال أقل من ساعة تُعتبران متعارضتين،
+   بصرف النظر عن المدة المختارة لكل منهما (تحتاج فسحة سفر/راحة بينهما على الأقل). */
 function clashSet(list){
   const bad = new Set();
   for(let i=0;i<list.length;i++)
     for(let j=i+1;j<list.length;j++){
       const a=list[i], b=list[j];
-      if(mins(a.from) < mins(b.to) && mins(b.from) < mins(a.to)){ bad.add(a.id+"|"+a.date); bad.add(b.id+"|"+b.date); }
+      if(Math.abs(mins(a.from) - mins(b.from)) < 60){ bad.add(a.id+"|"+a.date); bad.add(b.id+"|"+b.date); }
     }
   return bad;
 }
@@ -897,7 +927,7 @@ const state = {
   tab:"cal", mode:"month",
   cur:{y:new Date().getFullYear(), m:new Date().getMonth()},
   sel:TODAY, editing:null, occDate:null,
-  stuFilter:"all", subjFilter:"all"
+  stuFilter:"all", subjFilter:"all", q:""
 };
 
 /* ============ الرسم ============ */
@@ -1056,20 +1086,41 @@ function legend(){
 }
 
 /* ---------- تبويب الطلاب ---------- */
+/* بحث بالاسم: مربع واحد يُعاد استخدامه في الطلاب/الحسابات/المتابعة، يحافظ على التركيز والمؤشر أثناء الكتابة */
+function searchBox(){
+  return `<div class="field" style="margin-bottom:12px">
+    <input type="text" id="q-search" placeholder="ابحث عن طالب بالاسم…" value="${esc(state.q||"")}" autocomplete="off">
+  </div>`;
+}
+function wireSearch(){
+  const inp = document.getElementById("q-search");
+  if(!inp) return;
+  inp.oninput = ()=>{
+    state.q = inp.value;
+    const pos = inp.selectionStart;
+    render();
+    const el = document.getElementById("q-search");
+    if(el){ el.focus(); el.setSelectionRange(pos, pos); }
+  };
+}
+const matchesQ = n => !state.q || !state.q.trim() || n.includes(state.q.trim());
+
 function renderStudents(){
   const all = expand(winFrom(), winTo());
   const byStu = {};
   all.forEach(l=>{ (byStu[l.student||"بدون اسم"] ||= []).push(l); });
   const names = Object.keys(byStu).sort((a,b)=>byStu[b].length-byStu[a].length);
 
-  let html = `<div class="chips" role="group" aria-label="تصفية حسب المادة">
+  let html = searchBox() + `<div class="chips" role="group" aria-label="تصفية حسب المادة">
     <button class="chip" type="button" data-sf="all" aria-pressed="${state.subjFilter==="all"}">كل المواد</button>
     ${SUBJECTS.map(s=>`<button class="chip" type="button" data-sf="${s.v}" aria-pressed="${state.subjFilter===s.v}"><i style="background:${s.c}"></i>${s.l}</button>`).join("")}
   </div>`;
 
-  const shown = names.filter(n=> state.subjFilter==="all" || byStu[n].some(l=>l.subj===state.subjFilter));
+  const shown = names.filter(n=> matchesQ(n) && (state.subjFilter==="all" || byStu[n].some(l=>l.subj===state.subjFilter)));
   if(!shown.length){
-    html += `<div class="card"><p class="empty">لا طلاب بعد.<br>افتح التقويم واختر يومًا ثم اضغط «+ حصة».</p></div>`;
+    html += state.q.trim()
+      ? `<div class="card"><p class="empty">لا طالب باسم يحتوي «${esc(state.q.trim())}».</p></div>`
+      : `<div class="card"><p class="empty">لا طلاب بعد.<br>افتح التقويم واختر يومًا ثم اضغط «+ حصة».</p></div>`;
   }else{
     shown.forEach(n=>{
       const ls = byStu[n].filter(l=> state.subjFilter==="all" || l.subj===state.subjFilter);
@@ -1105,6 +1156,7 @@ function renderStudents(){
     if(nn===null) return;
     renameStudent(old, nn.trim());
   });
+  wireSearch();
   wire();
 }
 
@@ -1129,11 +1181,16 @@ function renderPay(){
     <div class="tile"><div class="v num">${owing}</div><div class="k">طلاب عليهم مبالغ</div></div>
   </div>`;
 
+  html = searchBox() + html;
+
+  const shown = names.filter(matchesQ);
   if(!names.length){
     html += `<div class="card"><p class="empty">أضف حصصًا أولًا، ثم اكتب لكل طالب المستحق والمدفوع.</p></div>`;
+  }else if(!shown.length){
+    html += `<div class="card"><p class="empty">لا طالب باسم يحتوي «${esc(state.q.trim())}».</p></div>`;
   }
 
-  names.forEach(n=>{
+  shown.forEach(n=>{
     const m = studentMeta(n), g = gradeOf(m.grade), sb = subjOf(m.subj);
     const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
     const hasDue = due > 0, r = due - paid;
@@ -1193,17 +1250,22 @@ function renderPay(){
       run: ()=>delPayment(id)
     });
   });
+  wireSearch();
   wire();
 }
 
 /* ---------- تبويب المتابعة ---------- */
+/* الدروس المكتملة فقط (بدون «جاري الشرح») — تُستخدم في السجل والتقرير الشهري كما كانت دائمًا */
 function coveredList(n){
   const items = libOf(n), pr = progOf(n);
-  return items.filter(x=>pr[x.id]).map(x=>({t:x.t, date:pr[x.id]})).sort((a,b)=>b.date.localeCompare(a.date));
+  return items.map(x=>({t:x.t, e:entryOf(pr, x.id)}))
+    .filter(x=>x.e && x.e.status==="done")
+    .map(x=>({t:x.t, date:x.e.date}))
+    .sort((a,b)=>b.date.localeCompare(a.date));
 }
 function renderProg(){
   const names = allStudents();
-  let html = "";
+  let html = searchBox();
   if(!names.length){
     html += `<div class="card"><p class="empty">أضف حصصًا من التقويم أولًا.<br>بعد كل حصة اضغط ✓ وعلّم الدروس التي شرحتها.</p></div>`;
   }
@@ -1211,7 +1273,11 @@ function renderProg(){
     const ca = coveredList(a)[0], cb = coveredList(b)[0];
     return (cb?cb.date:"").localeCompare(ca?ca.date:"") || a.localeCompare(b,"ar");
   });
-  names.forEach(n=>{
+  const shown = names.filter(matchesQ);
+  if(names.length && !shown.length){
+    html += `<div class="card"><p class="empty">لا طالب باسم يحتوي «${esc(state.q.trim())}».</p></div>`;
+  }
+  shown.forEach(n=>{
     const subs = studentSubjects(n);
     const m = studentMeta(n), g = gradeOf(m.grade), sb = subjOf(m.subj);
     const ps = progStat(n), cov = coveredList(n);
@@ -1221,6 +1287,7 @@ function renderProg(){
         <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subs.map(x=>subjOf(x.subj).l).join(" و")}</span></span>
         <span class="cnt"><b class="num">${ps.pct}٪</b><span>من الخطة</span></span>
       </div>
+      ${ps.p?`<span class="statuspill progress" style="margin:-4px 0 8px;display:inline-block">جاري الشرح: ${ps.p}</span>`:""}
       ${subs.map(x=>{
         const st = progStatKey(n, x.key), c = subjOf(x.subj);
         return `<div class="plan-row">
@@ -1241,6 +1308,7 @@ function renderProg(){
   main.innerHTML = html;
   main.querySelectorAll("[data-plan]").forEach(b=>b.onclick=()=>openPlan(b.dataset.plan, b.dataset.subj, b.dataset.grade));
   main.querySelectorAll("[data-report]").forEach(b=>b.onclick=()=>openReport(b.dataset.report));
+  wireSearch();
   wire();
 }
 
@@ -1485,16 +1553,21 @@ function paintGlist(){
   }
   const first = items.findIndex(x=>!pr[x.id]);
   box.innerHTML = items.map((x,i)=>{
-    const on = !!pr[x.id], here = pr[x.id]===ds;
-    return `<div class="pitem${on?" on":""}${here?" today":""}${i===first?" next":""}">
-      <button type="button" class="chk" role="checkbox" aria-checked="${on?"true":"false"}" data-mark="${x.id}" aria-label="تم شرحه">✓</button>
+    const e = entryOf(pr, x.id), st = e ? e.status : "todo";
+    const here = e && e.date===ds;
+    const label = st==="done" ? "مكتمل" : st==="progress" ? "جاري الشرح" : "لم يبدأ";
+    return `<div class="pitem ${st}${here?" today":""}${i===first?" next":""}">
       <span>${esc(x.t)}</span>
-      ${on?`<small class="num">${here?"اليوم":shortDate(pr[x.id])}</small>`:""}
+      ${e?`<small class="num">${here?"اليوم":shortDate(e.date)}</small>`:""}
+      <button type="button" class="statuspill ${st}" data-cyclestatus="${x.id}">${label}</button>
     </div>`;
   }).join("");
-  box.querySelectorAll("[data-mark]").forEach(b=>b.onclick=()=>{
-    const id = b.dataset.mark;
-    markLesson(student, id, progOf(student)[id] ? null : ds);
+  box.querySelectorAll("[data-cyclestatus]").forEach(b=>b.onclick=()=>{
+    const id = b.dataset.cyclestatus;
+    const cur = entryOf(progOf(student), id), st = cur ? cur.status : "todo";
+    if(st==="todo") markLesson(student, id, ds, "progress");
+    else if(st==="progress") markLesson(student, id, cur.date, "done");
+    else markLesson(student, id, null);
     paintGlist();
   });
   const nx = box.querySelector(".next");
@@ -1536,13 +1609,20 @@ function paintPlan(){
   document.getElementById("l-sum").innerHTML = `<div class="plan-row" style="margin-top:0">
     <div class="pl"><span>${subjOf(m.subj).l} · ${gradeOf(m.grade).l}</span><b class="num">${ps.t?`${ps.d} / ${ps.t} · ${ps.pct}٪`:"—"}</b></div>
     <div class="ptrack"><div class="pfill" style="width:${ps.pct}%"></div></div></div>`;
-  document.getElementById("l-list").innerHTML = items.length ? items.map(x=>`
-    <div class="pitem${pr[x.id]?" on":""}">
-      <button type="button" class="chk" role="checkbox" aria-checked="${pr[x.id]?"true":"false"}" data-pt="${x.id}" aria-label="تم شرحه">✓</button>
+  document.getElementById("l-list").innerHTML = items.length ? items.map((x,i)=>{
+    const e = entryOf(pr, x.id), st = e ? e.status : "todo";
+    const label = st==="done" ? "مكتمل" : st==="progress" ? "جاري الشرح" : "لم يبدأ";
+    return `<div class="pitem ${st}">
+      <div class="reorder">
+        <button type="button" data-up="${x.id}" ${i===0?"disabled":""} aria-label="نقل الدرس لأعلى">▲</button>
+        <button type="button" data-down="${x.id}" ${i===items.length-1?"disabled":""} aria-label="نقل الدرس لأسفل">▼</button>
+      </div>
       <span>${esc(x.t)}</span>
-      ${pr[x.id]?`<small class="num">${shortDate(pr[x.id])}</small>`:""}
+      ${e?`<small class="num">${shortDate(e.date)}</small>`:""}
+      <button type="button" class="statuspill ${st}" data-cyclestatus="${x.id}">${label}</button>
       <button class="x" type="button" data-pdel="${x.id}" aria-label="حذف الدرس من المكتبة">✕</button>
-    </div>`).join("") : `<p class="empty">لا دروس بعد لهذه المادة. أضفها بالأسفل، سطرًا لكل درس.</p>`;
+    </div>`;
+  }).join("") : `<p class="empty">لا دروس بعد لهذه المادة. أضفها بالأسفل، سطرًا لكل درس.</p>`;
 }
 function openPlan(n, subj, grade){
   planFor = {n, subj, grade, key: libKey(subj, grade)};
@@ -1555,15 +1635,34 @@ function closePlan(){ lscrim.hidden = true; planFor = null; render(); }
 document.getElementById("l-close").onclick = closePlan;
 lscrim.onclick = e => { if(e.target===lscrim) closePlan(); };
 document.getElementById("l-list").onclick = e => {
-  const t = e.target.closest("[data-pt]"), d = e.target.closest("[data-pdel]");
+  const t = e.target.closest("[data-cyclestatus]"), d = e.target.closest("[data-pdel]"),
+        up = e.target.closest("[data-up]"), down = e.target.closest("[data-down]");
   const n = planFor.n, k = planFor.key;
-  if(t){ const id = t.dataset.pt; markLesson(n, id, progOf(n)[id] ? null : TODAY); paintPlan(); }
+  if(t){
+    const id = t.dataset.cyclestatus;
+    const cur = entryOf(progOf(n), id), st = cur ? cur.status : "todo";
+    if(st==="todo") markLesson(n, id, TODAY, "progress");
+    else if(st==="progress") markLesson(n, id, cur.date, "done");
+    else markLesson(n, id, null);
+    paintPlan();
+  }
   if(d){
     const id = d.dataset.pdel;
     lib[k] = (lib[k]||[]).filter(x=>x.id!==id);
     saveLib();
     Object.keys(prog).forEach(st=>{ if(prog[st] && prog[st][id]){ delete prog[st][id]; } });
     saveProg();
+    paintPlan();
+  }
+  if(up || down){
+    const id = up ? up.dataset.up : down.dataset.down;
+    const arr = (lib[k]||[]).slice();
+    const i = arr.findIndex(x=>x.id===id);
+    const j = up ? i-1 : i+1;
+    if(i<0 || j<0 || j>=arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    lib[k] = arr;
+    saveLib();
     paintPlan();
   }
 };
@@ -1798,7 +1897,7 @@ document.getElementById("c-ok2").onclick = ()=>{ const r=run2; closeConfirm(); i
 
 /* ============ نافذة الحصة ============ */
 const scrim = document.getElementById("scrim");
-let draft = {grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}};
+let draft = {grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}, dur:90};
 
 function optButtons(el, items, cur, cb){
   el.innerHTML = items.map(it=>`<button class="opt" type="button" data-v="${it.v}" aria-pressed="${it.v===cur}">${it.dot?`<i style="background:${it.dot}"></i>`:""}${it.l}</button>`).join("");
@@ -1831,6 +1930,9 @@ function paintOpts(){
   }
   document.getElementById("f-rep-until").hidden = draft.rep.t === "none";
   document.getElementById("f-until").value = draft.rep.until || "";
+  optButtons(document.getElementById("f-dur"),
+    [{v:60,l:"ساعة"},{v:90,l:"ساعة ونصف"},{v:120,l:"ساعتان"}], draft.dur,
+    v=>{ draft.dur=+v; paintOpts(); });
 }
 function openSheet(les, date, occDate){
   state.editing = les ? les.id : null;
@@ -1839,7 +1941,8 @@ function openSheet(les, date, occDate){
     grade: les ? (les.grade||"10") : draft.grade,
     subj:  les ? (les.subj||"chem") : draft.subj,
     rep:   les && les.rep ? {t:les.rep.t||"none", d:(les.rep.d||[]).slice(), until:les.rep.until||""}
-                          : {t:"none", d:[], until:""}
+                          : {t:"none", d:[], until:""},
+    dur:   les ? nearestDur(mins(les.to||"17:30") - mins(les.from||"16:00")) : draft.dur
   };
   const ds = les ? les.date : (date || state.sel);
   const repeating = les && isRep(les);
@@ -1851,7 +1954,6 @@ function openSheet(les, date, occDate){
   document.getElementById("f-note").value    = les ? (les.note||"") : "";
   document.getElementById("f-date").value    = ds;
   document.getElementById("f-from").value    = les ? (les.from||"16:00") : "16:00";
-  document.getElementById("f-to").value      = les ? (les.to||"17:30")  : "17:30";
   document.getElementById("f-del").hidden    = !les;
   document.getElementById("f-msg").hidden    = true;
   document.querySelector('label[for="f-date"]').textContent = repeating ? "تاريخ بداية التكرار" : "التاريخ";
@@ -1872,12 +1974,11 @@ document.getElementById("f-save").onclick = ()=>{
   const student = document.getElementById("f-student").value.trim();
   const date = document.getElementById("f-date").value;
   const from = document.getElementById("f-from").value;
-  const to   = document.getElementById("f-to").value;
+  const to   = addMin(from, draft.dur);
   const show = t => { msg.textContent = t; msg.hidden = false; };
   if(!student){ show("اكتب اسم الطالب."); document.getElementById("f-student").focus(); return; }
   if(!date){ show("اختر تاريخ الحصة."); return; }
-  if(!from || !to){ show("حدّد وقت البداية والنهاية."); return; }
-  if(mins(to) <= mins(from)){ show("وقت النهاية يجب أن يكون بعد وقت البداية."); return; }
+  if(!from){ show("حدّد وقت البدء."); return; }
 
   const old = state.editing ? lessons.find(l=>l.id===state.editing) : null;
   const until = document.getElementById("f-until").value || "";
