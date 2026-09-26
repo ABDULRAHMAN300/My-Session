@@ -482,6 +482,7 @@ img,svg,canvas{max-width:100%;height:auto}
   </header>
   <div class="remind" id="remind" hidden role="status"></div>
   <div class="bkbar" id="updatebar" hidden role="status"></div>
+  <div class="bkbar" id="codebar" hidden role="status"></div>
   <div class="bkbar" id="bkbar" hidden role="status"></div>
   <main id="main"></main>
 </div>
@@ -944,6 +945,7 @@ function render(){
   paintBadge();
   updateRemind();
   paintBkBar();
+  paintCodeBar();
   refreshDatalist();
 }
 function paintBadge(){
@@ -1375,11 +1377,15 @@ function renderStats(){
 
   html += `<div class="card"><h3>النسخ الاحتياطي السحابي</h3>
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
-      نسخة تلقائية صامتة في الخلفية بعد كل تعديل. احتفظ برمز جهازك — به وحده تُسترجع بياناتك على جهاز آخر.
-      لا تشاركه إلا مع نفسك.</p>
+      نسخة تلقائية صامتة في الخلفية بعد كل تعديل. احتفظ برمز جهازك — به وحده تُسترجع بياناتك لو حُذف
+      التطبيق أو انمسحت بياناته بالخطأ. لا تشاركه إلا مع نفسك.</p>
     <div class="pay-row">
       <input type="text" id="cloud-code" readonly value="${esc(deviceCode())}" style="flex:1;min-width:150px;font-family:var(--font-d)">
-      <button class="minibtn" type="button" id="cloud-copy">نسخ الرمز</button>
+      <button class="minibtn solid" type="button" id="cloud-share">مشاركة</button>
+      <button class="minibtn" type="button" id="cloud-copy">نسخ</button>
+    </div>
+    <div class="pay-row" style="margin-top:10px">
+      <button class="minibtn" type="button" id="cloud-custom">استخدم عبارة أسهل أتذكرها بدل الرمز</button>
     </div>
     <div class="pay-row" style="margin-top:10px">
       <input type="text" id="cloud-restore-code" placeholder="الصق رمز جهاز آخر هنا" style="flex:1;min-width:150px">
@@ -1417,7 +1423,8 @@ function backupBlob(){
    الصف المطابق للرمز فحسب. الرفع صامت ومؤجَّل (debounce) بعد كل تعديل. */
 const CLOUD_URL  = "https://dwsyctxhfbuzpcjilmwq.supabase.co";
 const CLOUD_ANON = "sb_publishable_xDrnFMfYxuqI008QnSZ8yA_JoKKMqzg";
-const DEVICE_LS  = "hisas_device_code";
+const DEVICE_LS   = "hisas_device_code";
+const CODE_ACK_LS = "hisas_code_ack";
 function deviceCode(){
   let c = null;
   try{ c = localStorage.getItem(DEVICE_LS); }catch(e){}
@@ -1426,6 +1433,55 @@ function deviceCode(){
     try{ localStorage.setItem(DEVICE_LS, c); }catch(e){}
   }
   return c;
+}
+/* عبارة يختارها المستخدم بنفسه بدل الرمز العشوائي — أسهل تذكّرًا فلا يعتمد النجاة على حفظه خارجيًا */
+function setDeviceCode(newCode){
+  newCode = (newCode||"").trim();
+  if(newCode.length < 6) return false;
+  try{ localStorage.setItem(DEVICE_LS, newCode); }catch(e){}
+  cloudPush(); // ينقل نسخة البيانات الحالية إلى الرمز الجديد فورًا
+  return true;
+}
+/* تذكير لا يختفي إلا بعد نسخ الرمز أو مشاركته فعليًا — لا زر «لاحقًا» له عمدًا */
+function codeSaveNeeded(){
+  let ack = null;
+  try{ ack = localStorage.getItem(CODE_ACK_LS); }catch(e){}
+  return !ack;
+}
+function markCodeSaved(){
+  try{ localStorage.setItem(CODE_ACK_LS, "1"); }catch(e){}
+  paintCodeBar();
+}
+function paintCodeBar(){
+  const el = document.getElementById("codebar"); if(!el) return;
+  const need = codeSaveNeeded();
+  el.hidden = !need;
+  if(!need) return;
+  el.innerHTML = `<p>🔑 <b>احفظ رمز جهازك الآن.</b> هو وسيلتك الوحيدة لاسترجاع بياناتك لو حُذف التطبيق بالخطأ.</p>
+    <button class="minibtn solid" type="button" id="codebar-share">مشاركة الرمز</button>
+    <button class="minibtn" type="button" id="codebar-copy">نسخ</button>`;
+  document.getElementById("codebar-share").onclick = shareDeviceCode;
+  document.getElementById("codebar-copy").onclick = copyDeviceCode;
+}
+async function copyDeviceCode(){
+  const msg = document.getElementById("cloud-msg");
+  try{
+    await navigator.clipboard.writeText(deviceCode());
+    markCodeSaved();
+    if(msg) msg.textContent = "نُسخ الرمز.";
+  }catch(e){
+    const el = document.getElementById("cloud-code");
+    if(el) el.select();
+    if(msg) msg.textContent = "انسخه يدويًا (تم تحديده أعلاه).";
+  }
+}
+async function shareDeviceCode(){
+  const text = "رمز جهازي في تطبيق جدول الحصص: " + deviceCode();
+  const msg = document.getElementById("cloud-msg");
+  try{
+    if(navigator.share){ await navigator.share({text}); markCodeSaved(); if(msg) msg.textContent = "تمت المشاركة."; }
+    else { await copyDeviceCode(); }
+  }catch(e){ if(e && e.name==="AbortError") return; /* ألغى المشاركة — لا نُعلِّمه كمحفوظ */ }
 }
 async function cloudCall(fn, body){
   const res = await fetch(CLOUD_URL + "/rest/v1/rpc/" + fn, {
@@ -1463,9 +1519,13 @@ function wireCloud(){
   const codeEl = document.getElementById("cloud-code");
   if(!codeEl) return;
   const msg = document.getElementById("cloud-msg");
-  document.getElementById("cloud-copy").onclick = async ()=>{
-    try{ await navigator.clipboard.writeText(codeEl.value); msg.textContent = "نُسخ الرمز."; }
-    catch(e){ codeEl.select(); msg.textContent = "انسخه يدويًا (تم تحديده)."; }
+  document.getElementById("cloud-copy").onclick = copyDeviceCode;
+  document.getElementById("cloud-share").onclick = shareDeviceCode;
+  document.getElementById("cloud-custom").onclick = ()=>{
+    const nv = prompt("اكتب عبارة تتذكرها بسهولة (6 أحرف على الأقل)، لتحلّ محل الرمز العشوائي:", "");
+    if(nv===null) return;
+    if(setDeviceCode(nv.trim())){ markCodeSaved(); render(); }
+    else msg.textContent = "العبارة قصيرة جدًا — اكتب 6 أحرف على الأقل.";
   };
   document.getElementById("cloud-restore").onclick = ()=>{
     const code = document.getElementById("cloud-restore-code").value.trim();
@@ -1704,6 +1764,9 @@ function paintPlan(){
       <span>${esc(x.t)}</span>
       ${e?`<small class="num">${shortDate(e.date)}</small>`:""}
       <button type="button" class="statuspill ${st}" data-cyclestatus="${x.id}">${label}</button>
+      <button class="iconbtn" type="button" data-pedit="${x.id}" aria-label="تعديل اسم الدرس">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
+      </button>
       <button class="x" type="button" data-pdel="${x.id}" aria-label="حذف الدرس من المكتبة">✕</button>
     </div>`;
   }).join("") : `<p class="empty">لا دروس بعد لهذه المادة. أضفها بالأسفل، سطرًا لكل درس.</p>`;
@@ -1720,8 +1783,21 @@ document.getElementById("l-close").onclick = closePlan;
 lscrim.onclick = e => { if(e.target===lscrim) closePlan(); };
 document.getElementById("l-list").onclick = e => {
   const t = e.target.closest("[data-cyclestatus]"), d = e.target.closest("[data-pdel]"),
-        up = e.target.closest("[data-up]"), down = e.target.closest("[data-down]");
+        up = e.target.closest("[data-up]"), down = e.target.closest("[data-down]"),
+        pe = e.target.closest("[data-pedit]");
   const n = planFor.n, k = planFor.key;
+  if(pe){
+    const id = pe.dataset.pedit;
+    const item = (lib[k]||[]).find(x=>x.id===id);
+    if(!item) return;
+    const nt = prompt("عدّل اسم الدرس:", item.t);
+    if(nt===null) return;
+    const trimmed = nt.trim();
+    if(!trimmed) return;
+    item.t = trimmed;
+    saveLib();
+    paintPlan();
+  }
   if(t){
     const id = t.dataset.cyclestatus;
     const cur = entryOf(progOf(n), id), st = cur ? cur.status : "todo";
