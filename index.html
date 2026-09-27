@@ -696,7 +696,7 @@ function shortDate(s){ const d = parse(s); return d.getDate() + " " + MONTHS[d.g
 const LS = "hisas_v1";
 let lessons = [];
 function load(){ try{ lessons = JSON.parse(localStorage.getItem(LS)||"[]"); }catch(e){ lessons=[]; } }
-function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} bumpMemo(); recalcAllAutoPrices(); cloudPush(); }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(lessons)); }catch(e){} bumpMemo(); cloudPush(); }
 function putLesson(l){
   const i = lessons.findIndex(x=>x.id===l.id);
   if(i>=0) lessons[i]=l; else lessons.push(l);
@@ -712,7 +712,7 @@ const LIB_LS  = "hisas_lib_v1";
 const LIB_VER_LS = "hisas_lib_ver", LIB_VER = "2"; // ارفع الرقم عند تحديث الخطط الجاهزة    // دروس كل (مادة + صف) مشتركة
 const PROG_LS = "hisas_prog_v1";   // ما أنجزه كل طالب: {اسم: {رقم الدرس: التاريخ}}
 const MONEY_LS = "hisas_money_v1"; // {due:{اسم:مبلغ}, paid:{اسم:مبلغ}}
-let lib = {}, prog = {}, money = {due:{}, paid:{}, pays:[], price:{}};
+let lib = {}, prog = {}, money = {due:{}, paid:{}, pays:[]};
 
 const libKey = (subj, grade) => subj + "-" + grade;
 function loadLib(){
@@ -735,7 +735,7 @@ function saveProg(){ try{ localStorage.setItem(PROG_LS, JSON.stringify(prog)); }
 function loadMoney(){
   try{
     const m = JSON.parse(localStorage.getItem(MONEY_LS)||"null");
-    if(m){ money = {due:m.due||{}, paid:m.paid||{}, pays:Array.isArray(m.pays)?m.pays:[], price:m.price||{}}; return; }
+    if(m){ money = {due:m.due||{}, paid:m.paid||{}, pays:Array.isArray(m.pays)?m.pays:[]}; return; }
   }catch(e){}
   /* ترحيل من النسخة السابقة: تُجمع الدفعات القديمة في خانة المدفوع، وتُحفظ أيضًا كسجل دفعات */
   try{
@@ -748,7 +748,7 @@ function loadMoney(){
         paid[x.student] = (paid[x.student]||0) + amt;
         pays.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), student:x.student, amount:amt, date:x.date||TODAY});
       });
-      money = {due:{}, paid, pays, price:{}};
+      money = {due:{}, paid, pays};
       saveMoney();
     }
   }catch(e){}
@@ -798,10 +798,6 @@ function mergeMoney(oldName, newName){
   if(dueOld !== undefined){ money.due[newName] = (Number(money.due[newName])||0) + (Number(dueOld)||0); delete money.due[oldName]; }
   if(paidOld !== undefined){ money.paid[newName] = (Number(money.paid[newName])||0) + (Number(paidOld)||0); delete money.paid[oldName]; }
   money.pays.forEach(p=>{ if(p.student===oldName) p.student = newName; });
-  if(money.price[oldName] !== undefined){
-    if(money.price[newName] === undefined) money.price[newName] = money.price[oldName];
-    delete money.price[oldName];
-  }
 }
 function renameStudent(oldName, newName){
   newName = (newName||"").trim();
@@ -855,20 +851,6 @@ function markLesson(student, itemId, ds, status){
   saveProg();
 }
 function doneCount(n){ return doneUpToToday().filter(l=>(l.student||"بدون اسم")===n).length; }
-/* السعر الافتراضي: اختياري لكل طالب على حدة. حين يكون مفعَّلًا، يُعاد حساب «المستحق»
-   تلقائيًا (السعر × عدد الحصص المنفَّذة) عند أي تغيير على الحصص، مع بقاء الحقل قابلًا
-   للتعديل اليدوي في أي وقت — التعديل اليدوي يبقى إلى أن يقع تغيير جديد يعيد حسابه. */
-function recalcAllAutoPrices(){
-  if(!money.price) return;
-  let changed = false;
-  Object.keys(money.price).forEach(n=>{
-    const price = Number(money.price[n]);
-    if(!(price > 0)) return;
-    const due = Math.round(price * doneCount(n) * 1000) / 1000;
-    if(money.due[n] !== due){ money.due[n] = due; changed = true; }
-  });
-  if(changed) saveMoney();
-}
 
 /* ============ التكرار ============ */
 const isRep = l => !!(l.rep && l.rep.t && l.rep.t !== "none");
@@ -1230,10 +1212,6 @@ function renderPay(){
         <label>المدفوع<input type="number" inputmode="decimal" min="0" step="0.5" data-paid="${esc(n)}" value="${money.paid[n]!==undefined?money.paid[n]:""}" placeholder="0"></label>
         <div class="rest ${hasDue?(cleared?"clear":"owed"):""}"><span>المتبقي</span><b class="num">${hasDue?kd(r):"—"}</b></div>
       </div>
-      <div class="pay-row" style="margin-top:10px">
-        <label>سعر الحصة (اختياري)<input type="number" inputmode="decimal" min="0" step="0.5" data-price="${esc(n)}" value="${money.price[n]!==undefined?money.price[n]:""}" placeholder="بلا"></label>
-      </div>
-      ${money.price[n]>0?`<p class="hint" style="margin:4px 0 0">🔄 المستحق يُحسب تلقائيًا لهذا الطالب: ${kd(money.price[n])} × <span class="num">${doneCount(n)}</span> حصة منفَّذة = <b class="num">${kd(money.price[n]*doneCount(n))}</b> د.ك. يمكنك تعديل «المستحق» يدويًا فوق هذا عند الحاجة.</p>`:""}
       <div class="pay-row">
         <label>دفعة جديدة<input type="number" inputmode="decimal" min="0" step="0.5" data-newpay placeholder="0"></label>
         <input type="date" data-newpaydate value="${TODAY}">
@@ -1245,7 +1223,7 @@ function renderPay(){
     </div>`;
   });
 
-  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب، أو تلقائيًا لمن حدَّدت له «سعر الحصة». المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا.</p>`;
+  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. عدد الحصص للاطلاع فقط ولا يدخل في الحساب.</p>`;
   main.innerHTML = html;
 
   main.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{
@@ -1256,12 +1234,6 @@ function renderPay(){
   main.querySelectorAll("[data-paid]").forEach(i=>i.onchange=()=>{
     const n = i.dataset.paid, v = Number(i.value);
     if(i.value==="" ) delete money.paid[n]; else money.paid[n] = Math.max(0, v||0);
-    saveMoney(); render();
-  });
-  main.querySelectorAll("[data-price]").forEach(i=>i.onchange=()=>{
-    const n = i.dataset.price, v = Number(i.value);
-    if(i.value==="" || !(v>0)) delete money.price[n];
-    else { money.price[n] = v; money.due[n] = Math.round(v*doneCount(n)*1000)/1000; }
     saveMoney(); render();
   });
   main.querySelectorAll("[data-addpay]").forEach(b=>b.onclick=()=>{
@@ -1579,7 +1551,7 @@ function doImport(data, replace){
     lessons = Array.isArray(inc) ? inc.slice() : [];
     lib   = (data.lib  && typeof data.lib==="object")  ? data.lib  : {};
     prog  = (data.prog && typeof data.prog==="object") ? data.prog : {};
-    money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[], price:data.money.price||{}} : {due:{}, paid:{}, pays:[], price:{}};
+    money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[]} : {due:{}, paid:{}, pays:[]};
     addedCount = lessons.length;
   }else{
     const have = new Set(lessons.map(l=>l.id));
@@ -1603,9 +1575,6 @@ function doImport(data, replace){
       if(Array.isArray(data.money.pays)){
         const havePay = new Set(money.pays.map(p=>p.id));
         data.money.pays.forEach(p=>{ if(p && p.id && !havePay.has(p.id)) money.pays.push(p); });
-      }
-      if(data.money.price && typeof data.money.price === "object"){
-        money.price = Object.assign({}, data.money.price, money.price);
       }
     }
   }
