@@ -1,0 +1,13 @@
+{
+  "name": "hisas-schedule",
+  "version": "1.0.0",
+  "private": true,
+  "description": "جدول الحصص الخارجية — تطبيق ويب ثابت (PWA). الاختبارات فقط هي ما يحتاج npm.",
+  "scripts": {
+    "check": "node --check sw.js && node --check lib-default.js",
+    "test": "npm run check && node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
