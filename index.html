@@ -361,19 +361,24 @@ body{
 .pitem span{flex:1;min-width:0;font-size:14px;word-wrap:break-word}
 .pitem.on span,.pitem.done span{color:var(--ink-soft);text-decoration:line-through}
 .pitem.progress span{color:var(--warn)}
-.pitem .x{border:0;background:transparent;color:var(--ink-soft);font-size:14px;padding:6px;flex-shrink:0}
+.pitem .x{border:0;background:transparent;color:var(--ink-soft);font-size:16px;padding:6px;flex-shrink:0;min-width:40px;min-height:40px}
+.pitem .iconbtn{min-width:40px;min-height:40px}
 /* إعادة ترتيب دروس الخطة */
 .pitem .reorder{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
-.pitem .reorder button{width:22px;height:17px;font-size:9px;line-height:1;padding:0;border:0;
-  background:transparent;color:var(--ink-soft);border-radius:5px}
+.pitem .reorder button{width:40px;height:24px;font-size:11px;line-height:1;padding:0;border:0;
+  background:transparent;color:var(--ink-soft);border-radius:8px}
 .pitem .reorder button:disabled{opacity:.2}
 /* حالة الدرس: لم يبدأ / جاري الشرح / مكتمل */
-.statuspill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:11px;
+.statuspill{border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-size:11.5px;
   font-family:var(--font-d);background:var(--surface);color:var(--ink-soft);flex-shrink:0;white-space:nowrap}
 .statuspill.progress{background:color-mix(in srgb,var(--warn) 16%,transparent);
   border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
 .statuspill.done{background:color-mix(in srgb,var(--chem) 15%,transparent);
   border-color:color-mix(in srgb,var(--chem) 40%,transparent);color:var(--chem)}
+
+/* طلاب مؤرشفون */
+.arch-badge{display:inline-block;font-size:10.5px;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--ink-soft);margin-inline-start:6px;font-family:var(--font-d)}
+.card.archived{opacity:.72}
 
 /* التقرير الشهري */
 .report{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -439,6 +444,9 @@ img,svg,canvas{max-width:100%;height:auto}
 .covrow b{font-weight:500;min-width:0;word-wrap:break-word}
 /* مساحة لمس أوسع دون تغيير الشكل */
 .chk,.iconbtn{position:relative}
+/* مساحة لمس ≥ 40px دون تغيير حجم الزر المرئي */
+.chk::after,.iconbtn::after{content:"";position:absolute;inset:-9px}
+.pitem .reorder button::after{display:none}
 .chk::after{content:"";position:absolute;inset:-11px}
 .iconbtn::after{content:"";position:absolute;inset:-8px}
 .acts{gap:14px}
@@ -487,6 +495,7 @@ img,svg,canvas{max-width:100%;height:auto}
   <div class="remind" id="remind" hidden role="status"></div>
   <div class="bkbar" id="updatebar" hidden role="status"></div>
   <div class="bkbar" id="codebar" hidden role="status"></div>
+  <div class="bkbar" id="cloudbar" hidden role="status"></div>
   <div class="bkbar" id="bkbar" hidden role="status"></div>
   <main id="main"></main>
 </div>
@@ -515,6 +524,7 @@ img,svg,canvas{max-width:100%;height:auto}
       <label for="f-student">اسم الطالب</label>
       <input type="text" id="f-student" list="studentlist" placeholder="مثال: عبدالله الخالدي" autocomplete="off">
       <datalist id="studentlist"></datalist>
+      <p class="hint" id="f-hint" hidden style="margin:6px 0 0;text-align:start"></p>
     </div>
     <div class="field">
       <label for="f-grade">الصف</label>
@@ -626,6 +636,22 @@ img,svg,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<div class="scrim" id="iscrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ititle" style="max-width:420px">
+    <div class="grab"></div>
+    <h2 id="ititle">إدخال</h2>
+    <p id="itext" style="font-size:13.5px;color:var(--ink-soft);line-height:1.7;margin:0 0 4px"></p>
+    <div class="field" style="margin-top:10px">
+      <input type="text" id="iinput" autocomplete="off" aria-labelledby="ititle">
+    </div>
+    <p id="imsg" hidden style="font-size:12.5px;color:var(--warn);margin:0 0 4px;line-height:1.6"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" id="i-ok" type="button">حفظ</button>
+      <button class="btn ghost" id="i-no" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <script src="./lib-default.js"></script>
 <script>
 document.documentElement.dir = "rtl";
@@ -651,7 +677,14 @@ const REPEATS = [
 const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
 const DAYS   = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
 const DAYS_S = ["أحد","اثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"];
-const MIN_M = 2026*12+0, MAX_M = 2028*12+11;
+/* مدى التقويم مرن: من سنتين قبل السنة الحالية (أو أقدم حصة مسجَّلة) إلى ثلاث سنوات بعدها */
+const minM = () => {
+  const y = new Date().getFullYear();
+  let m = (y-2)*12;
+  try{ const f = lessons.map(l=>l.date).filter(Boolean).sort()[0]; if(f){ const d = parse(f); m = Math.min(m, d.getFullYear()*12 + d.getMonth()); } }catch(e){}
+  return m;
+};
+const maxM = () => (new Date().getFullYear()+3)*12 + 11;
 
 const gradeOf = v => GRADES.find(g=>g.v===v) || GRADES[0];
 const subjOf  = v => SUBJECTS.find(s=>s.v===v) || SUBJECTS[0];
@@ -711,6 +744,10 @@ function delLesson(id){ lessons = lessons.filter(x=>x.id!==id); save(); render()
 const LIB_LS  = "hisas_lib_v1";
 const LIB_VER_LS = "hisas_lib_ver", LIB_VER = "2"; // ارفع الرقم عند تحديث الخطط الجاهزة    // دروس كل (مادة + صف) مشتركة
 const PROG_LS = "hisas_prog_v1";   // ما أنجزه كل طالب: {اسم: {رقم الدرس: التاريخ}}
+const ARCH_LS = "hisas_arch_v1";   // طلاب مؤرشفون: {اسم: true} — مخفيون من القوائم بلا حذف بياناتهم
+let archived = {};
+function loadArch(){ try{ archived = JSON.parse(localStorage.getItem(ARCH_LS)||"{}") || {}; }catch(e){ archived = {}; } }
+function saveArch(){ try{ localStorage.setItem(ARCH_LS, JSON.stringify(archived)); }catch(e){} cloudPush(); }
 const MONEY_LS = "hisas_money_v1"; // {due:{اسم:مبلغ}, paid:{اسم:مبلغ}}
 let lib = {}, prog = {}, money = {due:{}, paid:{}, pays:[]};
 
@@ -811,6 +848,7 @@ function renameStudent(oldName, newName){
   }
   mergeMoney(oldName, newName);
   saveMoney();
+  if(archived[oldName]){ delete archived[oldName]; archived[newName] = true; saveArch(); }
   render();
 }
 /* كل المواد التي يدرسها الطالب، الأحدث أولًا */
@@ -932,7 +970,7 @@ const state = {
   tab:"cal", mode:"month",
   cur:{y:new Date().getFullYear(), m:new Date().getMonth()},
   sel:TODAY, editing:null, occDate:null,
-  stuFilter:"all", subjFilter:"all", q:""
+  stuFilter:"all", subjFilter:"all", q:"", showArch:false
 };
 
 /* ============ الرسم ============ */
@@ -972,10 +1010,10 @@ function monthNav(){
   const to   = state.cur.y+"-"+pad(state.cur.m+1)+"-"+pad(new Date(state.cur.y,state.cur.m+1,0).getDate());
   const n = expand(from,to).length;
   return `<div class="monthnav">
-    <button class="navbtn" id="prevm" type="button" ${idx<=MIN_M?"disabled":""} aria-label="الشهر السابق">›</button>
+    <button class="navbtn" id="prevm" type="button" ${idx<=minM()?"disabled":""} aria-label="الشهر السابق">›</button>
     <div class="monthlabel">${MONTHS[state.cur.m]} <span class="num">${state.cur.y}</span>
       <small>${n?`<span class="num">${n}</span> حصة هذا الشهر`:"لا حصص هذا الشهر"}</small></div>
-    <button class="navbtn" id="nextm" type="button" ${idx>=MAX_M?"disabled":""} aria-label="الشهر التالي">‹</button>
+    <button class="navbtn" id="nextm" type="button" ${idx>=maxM()?"disabled":""} aria-label="الشهر التالي">‹</button>
   </div>
   <div class="seg" role="group">
     <button type="button" data-mode="month" aria-pressed="${state.mode==="month"}">عرض شهري</button>
@@ -1093,12 +1131,17 @@ function legend(){
 
 /* ---------- تبويب الطلاب ---------- */
 /* بحث بالاسم: مربع واحد يُعاد استخدامه في الطلاب/الحسابات/المتابعة، يحافظ على التركيز والمؤشر أثناء الكتابة */
+const archivedCount = () => allStudents().filter(n=>archived[n]).length;
+const archOk = n => state.showArch || !archived[n];
 function searchBox(){
+  const na = archivedCount();
   return `<div class="field" style="margin-bottom:12px">
     <input type="text" id="q-search" placeholder="ابحث عن طالب بالاسم…" value="${esc(state.q||"")}" autocomplete="off">
-  </div>`;
+  </div>${na?`<div class="chips" style="margin-bottom:12px"><button class="chip" type="button" id="arch-toggle" aria-pressed="${state.showArch}">📦 المؤرشفون (${na})</button></div>`:""}`;
 }
 function wireSearch(){
+  const at = document.getElementById("arch-toggle");
+  if(at) at.onclick = ()=>{ state.showArch = !state.showArch; render(); };
   const inp = document.getElementById("q-search");
   if(!inp) return;
   inp.oninput = ()=>{
@@ -1122,7 +1165,7 @@ function renderStudents(){
     ${SUBJECTS.map(s=>`<button class="chip" type="button" data-sf="${s.v}" aria-pressed="${state.subjFilter===s.v}"><i style="background:${s.c}"></i>${s.l}</button>`).join("")}
   </div>`;
 
-  const shown = names.filter(n=> matchesQ(n) && (state.subjFilter==="all" || byStu[n].some(l=>l.subj===state.subjFilter)));
+  const shown = names.filter(n=> archOk(n) && matchesQ(n) && (state.subjFilter==="all" || byStu[n].some(l=>l.subj===state.subjFilter)));
   if(!shown.length){
     html += state.q.trim()
       ? `<div class="card"><p class="empty">لا طالب باسم يحتوي «${esc(state.q.trim())}».</p></div>`
@@ -1135,10 +1178,14 @@ function renderStudents(){
       const next = upcoming[0];
       const totalMin = ls.reduce((s,l)=>s+durOf(l),0);
       const subjs = [...new Set(ls.map(l=>subjOf(l.subj).l))].join(" و");
-      html += `<div class="card">
+      const isArch = !!archived[n];
+      html += `<div class="card${isArch?" archived":""}">
         <div class="stu-h">
           <span class="avatar" style="background:${g.c}">${g.s}</span>
-          <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subjs}</span></span>
+          <span class="who"><b>${esc(n)}${isArch?`<span class="arch-badge">مؤرشف</span>`:""}</b><span>${g.l} · ${subjs}</span></span>
+          <button class="iconbtn" type="button" data-arch="${esc(n)}" aria-label="${isArch?"إرجاع الطالب من الأرشيف":"أرشفة الطالب"}" title="${isArch?"إرجاع":"أرشفة"}">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v4h-17z"/><path d="M5 11v8h14v-8"/><path d="M10 15h4"/></svg>
+          </button>
           <button class="iconbtn" type="button" data-rename="${esc(n)}" aria-label="إعادة تسمية الطالب">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
           </button>
@@ -1153,14 +1200,18 @@ function renderStudents(){
       </div>`;
     });
   }
-  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}. لتصحيح اسم مكتوب خطأ اضغط ✏️ — تنتقل معه كل حصصه وخطته وحساباته.</p>`;
+  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}. لتصحيح اسم اضغط ✏️، ولإخفاء طالب انتهى التعامل معه اضغط 📦 (بياناته محفوظة ويمكن إرجاعه).</p>`;
   main.innerHTML = html;
   main.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{ state.subjFilter=b.dataset.sf; render(); });
+  main.querySelectorAll("[data-arch]").forEach(b=>b.onclick=()=>{
+    const n = b.dataset.arch;
+    if(archived[n]) delete archived[n]; else archived[n] = true;
+    saveArch(); render();
+  });
   main.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
     const old = b.dataset.rename;
-    const nn = prompt("الاسم الجديد لهذا الطالب:", old);
-    if(nn===null) return;
-    renameStudent(old, nn.trim());
+    askInput({title:"إعادة تسمية الطالب", text:"تنتقل معه كل حصصه وخطته وحساباته.", value:old, ok:"حفظ الاسم",
+      validate:v=>v?null:"اكتب اسمًا."}).then(nn=>{ if(nn!==null) renameStudent(old, nn); });
   });
   wireSearch();
   wire();
@@ -1189,7 +1240,7 @@ function renderPay(){
 
   html = searchBox() + html;
 
-  const shown = names.filter(matchesQ);
+  const shown = names.filter(n=>archOk(n) && matchesQ(n));
   if(!names.length){
     html += `<div class="card"><p class="empty">أضف حصصًا أولًا، ثم اكتب لكل طالب المستحق والمدفوع.</p></div>`;
   }else if(!shown.length){
@@ -1279,7 +1330,7 @@ function renderProg(){
     const ca = coveredList(a)[0], cb = coveredList(b)[0];
     return (cb?cb.date:"").localeCompare(ca?ca.date:"") || a.localeCompare(b,"ar");
   });
-  const shown = names.filter(matchesQ);
+  const shown = names.filter(n=>archOk(n) && matchesQ(n));
   if(names.length && !shown.length){
     html += `<div class="card"><p class="empty">لا طالب باسم يحتوي «${esc(state.q.trim())}».</p></div>`;
   }
@@ -1395,6 +1446,10 @@ function renderStats(){
       <input type="text" id="cloud-restore-code" placeholder="الصق رمز جهاز آخر هنا" style="flex:1;min-width:150px">
       <button class="minibtn solid" type="button" id="cloud-restore">استرجاع</button>
     </div>
+    <div class="pay-row" style="margin-top:10px">
+      <button class="minibtn" type="button" id="cloud-versions-btn">🕘 نسخ الأيام السابقة (للتراجع عن حذف خاطئ)</button>
+    </div>
+    <div id="cloud-versions" hidden></div>
     <p id="cloud-msg" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0"></p>
   </div>`;
 
@@ -1418,7 +1473,7 @@ function renderStats(){
 
 /* ---------- التصدير والاستيراد ---------- */
 function backupBlob(){
-  return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money }, null, 1);
+  return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money, archived }, null, 1);
 }
 
 /* ---------- النسخ الاحتياطي السحابي (Supabase) ----------
@@ -1438,12 +1493,36 @@ function deviceCode(){
   }
   return c;
 }
-/* عبارة يختارها المستخدم بنفسه بدل الرمز العشوائي — أسهل تذكّرًا فلا يعتمد النجاة على حفظه خارجيًا */
-function setDeviceCode(newCode){
+/* عبارة يختارها المستخدم بنفسه بدل الرمز العشوائي — أسهل تذكّرًا فلا يعتمد النجاة على حفظه خارجيًا.
+   قبل اعتمادها نتحقق سحابيًا: إن كانت مستخدمة أصلًا لا نرفع فوقها أبدًا قبل أن يقرر المستخدم. */
+function validCode(c){ return (c||"").trim().length >= 6; }
+function adoptDeviceCode(code){
+  try{ localStorage.setItem(DEVICE_LS, code); }catch(e){}
+  _guardOk = true;          // قرّر المستخدم صراحةً، فلا حاجة لحارس الرفع
+  cloudPush();
+}
+async function chooseDeviceCode(newCode){
+  const msg = document.getElementById("cloud-msg");
   newCode = (newCode||"").trim();
-  if(newCode.length < 6) return false;
-  try{ localStorage.setItem(DEVICE_LS, newCode); }catch(e){}
-  cloudPush(); // ينقل نسخة البيانات الحالية إلى الرمز الجديد فورًا
+  if(!validCode(newCode)){ if(msg) msg.textContent = "العبارة قصيرة جدًا — اكتب 6 أحرف على الأقل."; return false; }
+  if(msg) msg.textContent = "جارٍ التحقق من العبارة…";
+  let existing;
+  try{ existing = await cloudPull(newCode); }
+  catch(e){ if(msg) msg.textContent = "تعذّر الاتصال بالخادم — لم تتغيّر العبارة. حاول عند توفر الإنترنت."; return false; }
+  if(existing){
+    const n = Array.isArray(existing.lessons) ? existing.lessons.length : 0;
+    askConfirm({
+      title: "وُجدت نسخة بهذه العبارة",
+      text: "هذه العبارة مرتبطة بنسخة سحابية موجودة. اختر ما تريد — لن نكتب فوقها دون موافقتك.",
+      what: "النسخة الموجودة فيها " + n + " حصة.",
+      ok: "استرجاعها (تستبدل بيانات هذا الجهاز)",
+      ok2: "استخدام العبارة وكتابة بيانات هذا الجهاز فوقها",
+      run:  ()=>cloudRestore(newCode),
+      run2: ()=>{ adoptDeviceCode(newCode); markCodeSaved(); render(); }
+    });
+    return false;
+  }
+  adoptDeviceCode(newCode); markCodeSaved(); render();
   return true;
 }
 /* تذكير لا يختفي إلا بعد نسخ الرمز أو مشاركته فعليًا — لا زر «لاحقًا» له عمدًا */
@@ -1499,13 +1578,36 @@ async function cloudCall(fn, body){
 }
 async function cloudPull(code){ return cloudCall("hisas_backup_get", {p_code: code}); }
 let _cloudTimer = null;
+let _guardOk = false;       // هل تحققنا أن الرفع لن يمسح نسخة سحابية غير فارغة بنسخة فارغة؟
+function cloudHold(on, n){
+  const el = document.getElementById("cloudbar"); if(!el) return;
+  el.hidden = !on;
+  if(!on) return;
+  el.innerHTML = `<p>☁️ <b>وُجدت نسخة سحابية لهذا الرمز فيها ${n} حصة،</b> وهذا الجهاز فارغ. أوقفنا الرفع حمايةً لها.</p>
+    <button class="minibtn solid" type="button" id="cloudbar-restore">استرجاع النسخة</button>
+    <button class="minibtn" type="button" id="cloudbar-keep">ابدأ من الصفر وأستبدلها</button>`;
+  document.getElementById("cloudbar-restore").onclick = ()=>cloudRestore(deviceCode());
+  document.getElementById("cloudbar-keep").onclick = ()=>askConfirm({
+    title: "استبدال النسخة السحابية",
+    text: "سيُمسح محتوى النسخة السحابية الحالية ويُستبدل ببيانات هذا الجهاز الفارغة. لا يمكن التراجع (ستبقى فقط النسخ اليومية السابقة).",
+    ok: "نعم، استبدلها",
+    run: ()=>{ _guardOk = true; cloudHold(false); cloudPush(); }
+  });
+}
 function cloudPush(){
   if(typeof crypto === "undefined" || !crypto.getRandomValues) return; // بيئة لا تدعم التوليد الآمن للرمز
   if(_cloudTimer) clearTimeout(_cloudTimer);
-  _cloudTimer = setTimeout(()=>{
-    cloudCall("hisas_backup_set", {p_code: deviceCode(), p_data: JSON.parse(backupBlob())}).catch(()=>{
-      /* صامت — سيُعاد المحاولة تلقائيًا عند أي تعديل لاحق */
-    });
+  _cloudTimer = setTimeout(async ()=>{
+    try{
+      if(!_guardOk){
+        /* حارس: لا نمسح نسخة سحابية غير فارغة بنسخة محلية فارغة (مثلًا جهاز جديد بنفس الرمز) */
+        const cloud = await cloudPull(deviceCode());
+        const cn = cloud && Array.isArray(cloud.lessons) ? cloud.lessons.length : 0;
+        if(cn > 0 && lessons.length === 0){ cloudHold(true, cn); return; }
+        _guardOk = true;
+      }
+      await cloudCall("hisas_backup_put", {p_code: deviceCode(), p_data: JSON.parse(backupBlob())});
+    }catch(e){ /* صامت — سيُعاد المحاولة تلقائيًا عند أي تعديل لاحق */ }
   }, 2500);
 }
 async function cloudRestore(code){
@@ -1515,9 +1617,46 @@ async function cloudRestore(code){
     const data = await cloudPull(code);
     if(!data){ if(msg) msg.textContent = "لا توجد نسخة بهذا الرمز."; return; }
     try{ localStorage.setItem(DEVICE_LS, code); }catch(e){}
+    _guardOk = true; cloudHold(false);
     doImport(data, true);
     if(msg) msg.textContent = "تم الاسترجاع بنجاح. سيُرفَع أي تعديل لاحق بهذا الرمز.";
   }catch(e){ if(msg) msg.textContent = "تعذّر الاتصال بالخادم — تحقق من الإنترنت."; }
+}
+/* نسخ الأيام السابقة: حماية من الحذف الخاطئ داخل التطبيق (النسخة الحالية تعكس كل حذف خلال ثوانٍ) */
+function dayLabel(d){ const x = parse(d); return DAYS[x.getDay()] + " " + x.getDate() + " " + MONTHS[x.getMonth()]; }
+async function cloudVersions(){
+  const box = document.getElementById("cloud-versions"), msg = document.getElementById("cloud-msg");
+  if(!box) return;
+  box.hidden = false;
+  box.innerHTML = `<p class="hint" style="margin:6px 0">جارٍ التحميل…</p>`;
+  let list;
+  try{ list = await cloudCall("hisas_backup_versions_list", {p_code: deviceCode()}); }
+  catch(e){ box.innerHTML = ""; box.hidden = true; if(msg) msg.textContent = "تعذّر الاتصال بالخادم — تحقق من الإنترنت."; return; }
+  list = Array.isArray(list) ? list : [];
+  if(!list.length){
+    box.innerHTML = `<p class="hint" style="margin:6px 0">لا نسخ سابقة بعد — تتكوّن نسخة لليوم السابق عند أول تعديل في اليوم التالي، وتُحفَظ آخر 7 أيام نشاط.</p>`;
+    return;
+  }
+  box.innerHTML = `<div class="paylist">` + list.map(v=>`<div><span>${esc(dayLabel(v.day))}</span><b class="num">${v.lessons} حصة</b>
+    <button class="minibtn" type="button" data-ver="${esc(v.day)}" style="margin-inline-start:auto">استرجاع</button></div>`).join("") + `</div>`;
+  box.querySelectorAll("[data-ver]").forEach(b=>b.onclick=()=>{
+    const day = b.dataset.ver;
+    askConfirm({
+      title: "استرجاع نسخة يوم سابق",
+      text: "ستُستبدل كل بيانات هذا الجهاز بحالتها في نهاية ذلك اليوم. ما أضفته بعده سيُفقد (تبقى النسخ اليومية الأخرى).",
+      what: dayLabel(day),
+      ok: "استرجاع واستبدال",
+      run: async ()=>{
+        try{
+          const data = await cloudCall("hisas_backup_version_get", {p_code: deviceCode(), p_day: day});
+          if(!data){ if(msg) msg.textContent = "تعذّر العثور على هذه النسخة."; return; }
+          _guardOk = true;
+          doImport(data, true);
+          if(msg) msg.textContent = "تم استرجاع نسخة " + dayLabel(day) + ".";
+        }catch(e){ if(msg) msg.textContent = "تعذّر الاتصال بالخادم — تحقق من الإنترنت."; }
+      }
+    });
+  });
 }
 function wireCloud(){
   const codeEl = document.getElementById("cloud-code");
@@ -1525,11 +1664,11 @@ function wireCloud(){
   const msg = document.getElementById("cloud-msg");
   document.getElementById("cloud-copy").onclick = copyDeviceCode;
   document.getElementById("cloud-share").onclick = shareDeviceCode;
+  document.getElementById("cloud-versions-btn").onclick = cloudVersions;
   document.getElementById("cloud-custom").onclick = ()=>{
-    const nv = prompt("اكتب عبارة تتذكرها بسهولة (6 أحرف على الأقل)، لتحلّ محل الرمز العشوائي:", "");
-    if(nv===null) return;
-    if(setDeviceCode(nv.trim())){ markCodeSaved(); render(); }
-    else msg.textContent = "العبارة قصيرة جدًا — اكتب 6 أحرف على الأقل.";
+    askInput({title:"عبارة تتذكرها", text:"تحلّ محل الرمز العشوائي، وبها تسترجع بياناتك على أي جهاز. 6 أحرف على الأقل.",
+      placeholder:"مثال: اسمك + رقم تتذكره", ok:"اعتماد العبارة",
+      validate:v=>validCode(v)?null:"العبارة قصيرة جدًا — 6 أحرف على الأقل."}).then(nv=>{ if(nv!==null) chooseDeviceCode(nv); });
   };
   document.getElementById("cloud-restore").onclick = ()=>{
     const code = document.getElementById("cloud-restore-code").value.trim();
@@ -1552,6 +1691,7 @@ function doImport(data, replace){
     lib   = (data.lib  && typeof data.lib==="object")  ? data.lib  : {};
     prog  = (data.prog && typeof data.prog==="object") ? data.prog : {};
     money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[]} : {due:{}, paid:{}, pays:[]};
+    archived = (data.archived && typeof data.archived==="object") ? data.archived : {};
     addedCount = lessons.length;
   }else{
     const have = new Set(lessons.map(l=>l.id));
@@ -1569,6 +1709,7 @@ function doImport(data, replace){
     if(data.prog && typeof data.prog === "object"){
       Object.keys(data.prog).forEach(n=>{ prog[n] = Object.assign({}, data.prog[n], prog[n]||{}); });
     }
+    if(data.archived && typeof data.archived === "object"){ archived = Object.assign({}, data.archived, archived); }
     if(data.money){
       money.due = Object.assign({}, data.money.due||{}, money.due);
       money.paid = Object.assign({}, data.money.paid||{}, money.paid);
@@ -1578,7 +1719,7 @@ function doImport(data, replace){
       }
     }
   }
-  save(); saveLib(); saveProg(); saveMoney();
+  save(); saveLib(); saveProg(); saveMoney(); saveArch();
   if(msg) msg.textContent = replace
     ? "تم الاستبدال الكامل — " + addedCount + " حصة."
     : "تم دمج " + addedCount + " حصة جديدة، مع الخطة والحسابات.";
@@ -1794,13 +1935,12 @@ document.getElementById("l-list").onclick = e => {
     const id = pe.dataset.pedit;
     const item = (lib[k]||[]).find(x=>x.id===id);
     if(!item) return;
-    const nt = prompt("عدّل اسم الدرس:", item.t);
-    if(nt===null) return;
-    const trimmed = nt.trim();
-    if(!trimmed) return;
-    item.t = trimmed;
-    saveLib();
-    paintPlan();
+    askInput({title:"تعديل اسم الدرس", value:item.t, ok:"حفظ", validate:v=>v?null:"اكتب اسم الدرس."}).then(nt=>{
+      if(nt===null) return;
+      item.t = nt;
+      saveLib();
+      paintPlan();
+    });
   }
   if(t){
     const id = t.dataset.cyclestatus;
@@ -2061,6 +2201,41 @@ cscrim.onclick = e => { if(e.target===cscrim) closeConfirm(); };
 document.getElementById("c-ok").onclick  = ()=>{ const r=run1; closeConfirm(); if(r) r(); };
 document.getElementById("c-ok2").onclick = ()=>{ const r=run2; closeConfirm(); if(r) r(); };
 
+/* ============ نافذة إدخال نص (بديل prompt() الأصلي) ============ */
+const iscrim = document.getElementById("iscrim");
+let _inputDone = null;
+function askInput(o){
+  return new Promise(resolve=>{
+    document.getElementById("ititle").textContent = o.title || "";
+    document.getElementById("itext").textContent = o.text || "";
+    document.getElementById("itext").hidden = !o.text;
+    const inp = document.getElementById("iinput");
+    inp.value = o.value || "";
+    inp.placeholder = o.placeholder || "";
+    document.getElementById("i-ok").textContent = o.ok || "حفظ";
+    const m = document.getElementById("imsg"); m.hidden = true; m.textContent = "";
+    _inputDone = { resolve, validate: o.validate };
+    iscrim.hidden = false;
+    setTimeout(()=>{ inp.focus(); inp.select(); }, 60);
+  });
+}
+function closeInput(v){
+  iscrim.hidden = true;
+  const d = _inputDone; _inputDone = null;
+  if(d) d.resolve(v);
+}
+function submitInput(){
+  if(!_inputDone) return;
+  const v = document.getElementById("iinput").value.trim();
+  const err = _inputDone.validate ? _inputDone.validate(v) : null;
+  if(err){ const m = document.getElementById("imsg"); m.textContent = err; m.hidden = false; return; }
+  closeInput(v);
+}
+document.getElementById("i-ok").onclick = submitInput;
+document.getElementById("i-no").onclick = ()=>closeInput(null);
+iscrim.onclick = e => { if(e.target===iscrim) closeInput(null); };
+document.getElementById("iinput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); submitInput(); } });
+
 /* ============ نافذة الحصة ============ */
 const scrim = document.getElementById("scrim");
 let draft = {grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}, dur:90};
@@ -2120,6 +2295,8 @@ function openSheet(les, date, occDate){
   document.getElementById("f-note").value    = les ? (les.note||"") : "";
   document.getElementById("f-date").value    = ds;
   document.getElementById("f-from").value    = les ? (les.from||"16:00") : "16:00";
+  _prefilledFor = null;
+  document.getElementById("f-hint").hidden = true;
   document.getElementById("f-del").hidden    = !les;
   document.getElementById("f-msg").hidden    = true;
   document.querySelector('label[for="f-date"]').textContent = repeating ? "تاريخ بداية التكرار" : "التاريخ";
@@ -2127,12 +2304,32 @@ function openSheet(les, date, occDate){
   scrim.hidden = false;
   setTimeout(()=>document.getElementById("f-student").focus(), 50);
 }
+/* تعبئة ذكية: اسم طالب معروف يملأ الصف والمادة والمدة ووقت البدء من آخر حصة له (مرة لكل اسم في كل فتح للنموذج) */
+let _prefilledFor = null;
+function prefillFromLast(){
+  if(state.editing) return;
+  const name = document.getElementById("f-student").value.trim();
+  if(!name || name === _prefilledFor) return;
+  const last = lessons.filter(l=>(l.student||"")===name).sort((a,b)=>(b.ts||0)-(a.ts||0))[0];
+  if(!last) return;
+  _prefilledFor = name;
+  draft.grade = last.grade || draft.grade;
+  draft.subj  = last.subj  || draft.subj;
+  draft.dur   = nearestDur(mins(last.to||"17:30") - mins(last.from||"16:00"));
+  document.getElementById("f-from").value = last.from || "16:00";
+  paintOpts();
+  const h = document.getElementById("f-hint");
+  h.textContent = "✨ عُبِّئت الحقول من آخر حصة لهذا الطالب — عدّلها إن لزم.";
+  h.hidden = false;
+}
+document.getElementById("f-student").addEventListener("change", prefillFromLast);
+document.getElementById("f-student").addEventListener("input", e=>{ if(e.inputType==="insertReplacementText") prefillFromLast(); });
 function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; }
 document.getElementById("f-cancel").onclick = closeSheet;
 scrim.onclick = e => { if(e.target===scrim) closeSheet(); };
 document.addEventListener("keydown", e=>{
   if(e.key!=="Escape") return;
-  if(!cscrim.hidden) closeConfirm(); else if(!scrim.hidden) closeSheet();
+  if(!iscrim.hidden) closeInput(null); else if(!cscrim.hidden) closeConfirm(); else if(!scrim.hidden) closeSheet();
 });
 
 document.getElementById("f-save").onclick = ()=>{
@@ -2165,6 +2362,7 @@ document.getElementById("f-save").onclick = ()=>{
     stat:   old && old.stat ? old.stat : {},
     ts: old ? (old.ts||Date.now()) : Date.now()
   };
+  if(archived[student]){ delete archived[student]; saveArch(); }   // حصة جديدة لطالب مؤرشف = عاد للعمل
   state.sel = date;
   const d = parse(date); state.cur = {y:d.getFullYear(), m:d.getMonth()};
   closeSheet();
@@ -2210,6 +2408,7 @@ try{ const th=localStorage.getItem("hisas_theme"); if(th) document.documentEleme
 load();
 loadLib();
 loadMoney();
+loadArch();
 render();
 cloudPush(); // نسخة سحابية أولى فور الفتح، حتى دون أي تعديل جديد
 
