@@ -353,3 +353,39 @@ test("مراجعة بمبلغ على الحساب: تُضاف إلى المست�
   assert.equal(w.doneSplit("ليلى").rev, 1);
   assert.deepEqual(app.errors, []);
 });
+
+test("قفل التطبيق: تفعيل برمز، قفل، رمز خاطئ، فتح، تغيير وإيقاف", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const key = (k) => d.querySelector(`#lk-pad [data-k="${k}"]`).click();
+  const pin = (s) => [...s].forEach(key);
+  const open = () => !d.getElementById("lock").hidden;
+  assert.equal(open(), false, "بلا رمز: لا قفل");
+  t.setTab("stats"); w.render();
+  d.getElementById("pin-on").click();
+  pin("1234");                                                  // الرمز
+  pin("1111");                                                  // تأكيد مختلف: يبقى في الخطوة
+  assert.ok(d.getElementById("lk-msg").textContent.includes("غير متطابقين"));
+  pin("1234");
+  assert.equal(open(), false);
+  assert.ok(d.getElementById("pin-off"), "صار القفل مفعّلًا");
+  const raw = d.defaultView.localStorage.getItem("hisas_pin_v1");
+  assert.ok(raw && !raw.includes("1234"), "الرمز لا يُخزَّن نصًّا");
+
+  d.getElementById("pin-now").click();
+  assert.equal(open(), true);
+  assert.equal(d.getElementById("main").closest("[inert]") !== null, true, "المحتوى خلف القفل معطّل");
+  pin("0000");
+  assert.equal(open(), true);
+  assert.ok(d.getElementById("lk-msg").textContent.includes("غير صحيح"));
+  pin("1234");
+  assert.equal(open(), false);
+  assert.equal(d.querySelectorAll("[inert]").length, 0);
+
+  d.getElementById("pin-off").click();                          // الإيقاف يطلب الرمز أولًا
+  assert.equal(open(), true);
+  pin("1234");
+  assert.ok(d.getElementById("pin-on"), "عاد القفل مُوقَفًا");
+  assert.equal(d.defaultView.localStorage.getItem("hisas_pin_v1"), null);
+  assert.deepEqual(app.errors, []);
+});
