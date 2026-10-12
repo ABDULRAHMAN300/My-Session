@@ -321,6 +321,13 @@ body{
   background:var(--grad);color:#fff;font-size:13px;box-shadow:0 6px 18px color-mix(in srgb,var(--rose) 30%,transparent)}
 .remind b{font-family:var(--font-d)}
 
+/* شريط التراجع بعد الحذف */
+.undobar{position:fixed;inset-inline:16px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:65;max-width:520px;margin-inline:auto;
+  background:var(--ink);color:var(--bg);border-radius:14px;padding:9px 10px 9px 16px;display:flex;align-items:center;gap:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,.28);font-size:13.5px}
+.undobar span{flex:1;line-height:1.5}
+.undobar button{border:0;border-radius:999px;background:var(--bg);color:var(--ink);font-family:var(--font-d);font-weight:700;padding:8px 18px;min-height:40px}
+
 /* بطاقات الإحصاء بألوان متعددة */
 .tile{position:relative;overflow:hidden}
 .tile::before{content:"";position:absolute;inset-inline:0;top:0;height:4px;background:var(--grad)}
@@ -480,6 +487,8 @@ img,svg,canvas{max-width:100%;height:auto}
 .minibtn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;
   font-size:12.5px;font-family:var(--font-d);color:var(--violet)}
 .minibtn.solid{background:var(--grad);color:var(--on-violet);border-color:transparent}
+.minibtn.rev{color:var(--rev);border-color:color-mix(in srgb,var(--rev) 40%,var(--line))}
+.stu-acts{margin-top:10px}
 .paylist{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
 .paylist div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);padding:3px 0}
 .paylist b{font-family:var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums}
@@ -665,6 +674,8 @@ img,svg,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<div class="undobar" id="undobar" hidden role="status" aria-live="polite"></div>
+
 <script src="./lib-default.js"></script>
 <script>
 document.documentElement.dir = "rtl";
@@ -686,6 +697,7 @@ const KINDS = [
   {v:"review", l:"مراجعة اختبار", c:"var(--rev)"}
 ];
 const isReview = l => (l && l.kind) === "review";
+const kindTag = l => isReview(l) ? " · مراجعة اختبار" : "";
 const REPEATS = [
   {v:"none",    l:"بدون تكرار"},
   {v:"weekly",  l:"أسبوعي"},
@@ -742,6 +754,37 @@ function longDate(s){
   return DAYS[d.getDay()] + " " + d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear();
 }
 function shortDate(s){ const d = parse(s); return d.getDate() + " " + MONTHS[d.getMonth()]; }
+
+/* ============ التراجع بعد الحذف ============
+   لقطة كاملة من البيانات قبل العملية؛ يظهر شريط «تراجع» عشر ثوانٍ، ويسقط عند أي تعديل لاحق
+   (cloudPush تستدعي undoStale) كي لا يُلغي التراجع تعديلًا أحدث منه. */
+const undoBar = document.getElementById("undobar");
+let _undo = null;
+function snapState(){ return JSON.stringify({lessons, lib, prog, money, archived}); }
+function undoStale(){
+  if(!_undo) return;
+  clearTimeout(_undo.timer); _undo = null;
+  undoBar.hidden = true;
+}
+function undoNow(){
+  const u = _undo; if(!u) return;
+  undoStale();
+  const o = JSON.parse(u.snap);
+  lessons = o.lessons||[]; lib = o.lib||{}; prog = o.prog||{};
+  money = o.money||{due:{}, paid:{}, pays:[]}; archived = o.archived||{};
+  save(); saveLib(); saveProg(); saveMoney(); saveArch();
+  render();
+  if(!lscrim.hidden) paintPlan();     // نافذة الخطة مفتوحة: أعد رسمها بالقائمة المستعادة
+}
+function offerUndo(label, snap){
+  undoStale();
+  undoBar.innerHTML = '<span></span><button type="button" id="undo-btn">تراجع</button>';
+  undoBar.firstChild.textContent = label;
+  undoBar.hidden = false;
+  _undo = {snap, timer:setTimeout(undoStale, 10000)};
+  document.getElementById("undo-btn").onclick = undoNow;
+}
+function withUndo(label, fn){ const snap = snapState(); fn(); offerUndo(label, snap); }
 
 /* ============ التخزين (محلي) ============ */
 const LS = "hisas_v1";
@@ -1220,10 +1263,11 @@ function renderStudents(){
         </div>
         <div class="nextline">
           ${next
-            ? `القادمة: <b>${longDate(next.date)}</b> · <b class="num">${fmtT(next.from)}</b> — ${fmtT(next.to)}`
+            ? `القادمة: <b>${longDate(next.date)}</b> · <b class="num">${fmtT(next.from)}</b> — ${fmtT(next.to)}${isReview(next)?` · <b>مراجعة اختبار</b>`:""}`
             : `لا حصص قادمة مجدولة.`}
           <br>مجموع الوقت المجدول: <b>${durLabel(totalMin)}</b>
         </div>
+        ${isArch?"":`<div class="stu-acts"><button class="minibtn rev" type="button" data-rev="${esc(n)}">+ موعد مراجعة اختبار</button></div>`}
       </div>`;
     });
   }
@@ -1235,6 +1279,7 @@ function renderStudents(){
     if(archived[n]) delete archived[n]; else archived[n] = true;
     saveArch(); render();
   });
+  main.querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>openReviewFor(b.dataset.rev));
   main.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
     const old = b.dataset.rename;
     askInput({title:"إعادة تسمية الطالب", text:"تنتقل معه كل حصصه وخطته وحساباته.", value:old, ok:"حفظ الاسم",
@@ -1331,7 +1376,7 @@ function renderPay(){
       text:"سيُحذف هذا السجل، ويُخصَم مبلغه من «المدفوع».",
       what: p ? (p.student+" — "+kd(p.amount)+" د.ك · "+shortDate(p.date)) : "",
       ok:"حذف",
-      run: ()=>delPayment(id)
+      run: ()=>withUndo("حُذفت الدفعة", ()=>delPayment(id))
     });
   });
   wireSearch();
@@ -1418,7 +1463,7 @@ function renderStats(){
   const maxStu = Math.max(1,...topStu.map(x=>x[1]));
 
   let html = `<div class="tiles">
-    <div class="tile"><div class="v num">${done.length}</div><div class="k">حصص منفَّذة</div></div>
+    <div class="tile"><div class="v num">${done.length}</div><div class="k">${(()=>{const r=done.filter(isReview).length;return r?`حصص منفَّذة · منها ${r} مراجعة`:"حصص منفَّذة";})()}</div></div>
     <div class="tile"><div class="v" style="font-size:19px">${durLabel(doneMin)}</div><div class="k">مجموع ساعات التدريس</div></div>
     <div class="tile"><div class="v num">${students.length}</div><div class="k">عدد الطلاب</div></div>
   </div>
@@ -1622,6 +1667,7 @@ function cloudHold(on, n){
   });
 }
 function cloudPush(){
+  undoStale();   // أي حفظ جديد يُبطل «تراجع» القديم
   if(typeof crypto === "undefined" || !crypto.getRandomValues) return; // بيئة لا تدعم التوليد الآمن للرمز
   if(_cloudTimer) clearTimeout(_cloudTimer);
   _cloudTimer = setTimeout(async ()=>{
@@ -1709,10 +1755,11 @@ function wireCloud(){
   };
 }
 /* استيراد نسخة احتياطية: دمج إضافي (آمن) أو استبدال كامل (يمسح بيانات الجهاز الحالية) */
-function doImport(data, replace){
+function doImport(data, replace, undoable){
   const inc = Array.isArray(data) ? data : data.lessons;
   const msg = document.getElementById("bk-msg");
   let addedCount = 0;
+  const snap = (replace && undoable) ? snapState() : null;   // لزرّ «تراجع» — لاستيراد الملف فقط، لا للاسترجاع السحابي (قد يكتب فوق نسخة جهاز آخر)
   if(replace){
     lessons = Array.isArray(inc) ? inc.slice() : [];
     lib   = (data.lib  && typeof data.lib==="object")  ? data.lib  : {};
@@ -1753,6 +1800,7 @@ function doImport(data, replace){
   const file = document.getElementById("bk-file");
   if(file) file.value = "";
   render();
+  if(snap) offerUndo("استُبدلت كل البيانات", snap);
 }
 function wireBackup(){
   const msg = document.getElementById("bk-msg");
@@ -1788,10 +1836,10 @@ function wireBackup(){
       askConfirm({
         title: "استيراد نسخة احتياطية",
         text: "اختر طريقة الاستيراد.",
-        what: "الملف يحتوي " + inc.length + " حصة. الاستبدال الكامل يمسح بيانات هذا الجهاز الحالية ولا يمكن التراجع عنه.",
+        what: "الملف يحتوي " + inc.length + " حصة. الاستبدال الكامل يمسح بيانات هذا الجهاز الحالية (يمكن التراجع عنه لثوانٍ فقط بعد التنفيذ).",
         ok: "استبدال بالكامل",
         ok2: "دمج مع الحالي (آمن)",
-        run:  ()=>doImport(data, true),
+        run:  ()=>doImport(data, true, true),
         run2: ()=>doImport(data, false)
       });
     };
@@ -1979,10 +2027,12 @@ document.getElementById("l-list").onclick = e => {
   }
   if(d){
     const id = d.dataset.pdel;
-    lib[k] = (lib[k]||[]).filter(x=>x.id!==id);
-    saveLib();
-    Object.keys(prog).forEach(st=>{ if(prog[st] && prog[st][id]){ delete prog[st][id]; } });
-    saveProg();
+    withUndo("حُذف الدرس من الخطة", ()=>{
+      lib[k] = (lib[k]||[]).filter(x=>x.id!==id);
+      saveLib();
+      Object.keys(prog).forEach(st=>{ if(prog[st] && prog[st][id]){ delete prog[st][id]; } });
+      saveProg();
+    });
     paintPlan();
   }
   if(up || down){
@@ -2177,9 +2227,9 @@ function heroHTML(){
   const who = l => esc(l.student||"بدون اسم");
   let line;
   if(!nx) line = `<b>لا حصص قادمة</b><span>لا شيء مجدول لليوم أو الغد.</span>`;
-  else if(nx.kind==="now") line = `<b>الآن: ${who(nx.l)}</b><span>${subjOf(nx.l.subj).l} · تنتهي بعد ${inTxt(nx.left)}</span>`;
-  else if(nx.kind==="soon") line = `<b>التالية: ${who(nx.l)} · ${fmtT(nx.l.from)}</b><span>${subjOf(nx.l.subj).l} · بعد ${inTxt(nx.left)}</span>`;
-  else line = `<b>غدًا: ${who(nx.l)} · ${fmtT(nx.l.from)}</b><span>${subjOf(nx.l.subj).l} · أول حصة غدًا</span>`;
+  else if(nx.kind==="now") line = `<b>الآن: ${who(nx.l)}</b><span>${subjOf(nx.l.subj).l}${kindTag(nx.l)} · تنتهي بعد ${inTxt(nx.left)}</span>`;
+  else if(nx.kind==="soon") line = `<b>التالية: ${who(nx.l)} · ${fmtT(nx.l.from)}</b><span>${subjOf(nx.l.subj).l}${kindTag(nx.l)} · بعد ${inTxt(nx.left)}</span>`;
+  else line = `<b>غدًا: ${who(nx.l)} · ${fmtT(nx.l.from)}</b><span>${subjOf(nx.l.subj).l}${kindTag(nx.l)} · أول حصة غدًا</span>`;
   const urgent = nx && (nx.kind==="now" || (nx.kind==="soon" && nx.left<=30));
   return `<section class="hero${urgent?" urgent":""}" id="hero">
     <div class="hero-top"><span>${hi}</span>${list.length?`<span class="hero-count num">${doneN} / ${list.length} اليوم</span>`:""}</div>
@@ -2193,8 +2243,8 @@ function updateRemind(){
   const show = state.tab!=="cal" && nx && (nx.kind==="now" || (nx.kind==="soon" && nx.left<=30));
   el.hidden = !show;
   if(show) el.innerHTML = nx.kind==="now"
-    ? `⏱ الآن: <b>${esc(nx.l.student||"بدون اسم")}</b> · تنتهي بعد ${inTxt(nx.left)}`
-    : `🔔 بعد ${inTxt(nx.left)}: <b>${esc(nx.l.student||"بدون اسم")}</b> · ${fmtT(nx.l.from)}`;
+    ? `⏱ الآن: <b>${esc(nx.l.student||"بدون اسم")}</b>${kindTag(nx.l)} · تنتهي بعد ${inTxt(nx.left)}`
+    : `🔔 بعد ${inTxt(nx.left)}: <b>${esc(nx.l.student||"بدون اسم")}</b>${kindTag(nx.l)} · ${fmtT(nx.l.from)}`;
 }
 function tick(){
   const nowKey = key(new Date());
@@ -2274,9 +2324,16 @@ function optButtons(el, items, cur, cb){
   el.querySelectorAll(".opt").forEach(b=>b.onclick=()=>cb(b.dataset.v));
 }
 function paintOpts(){
+  const cur = state.editing ? lessons.find(l=>l.id===state.editing) : null;
+  const series = !!(cur && isRep(cur));
   optButtons(document.getElementById("f-kind"), KINDS.map(k=>({v:k.v,l:k.l,dot:k.c})), draft.kind,
     v=>{ draft.kind=v; if(v==="review") draft.rep={t:"none",d:[],until:""}; paintOpts(); });
   const isRev = draft.kind === "review";
+  /* سلسلة متكرّرة قيد التعديل: لا يُعرض اختيار النوع — تحويلها إلى مراجعة كان سيحذف كل مواعيدها اللاحقة بصمت */
+  document.getElementById("f-kind").closest(".field").hidden = series;
+  document.getElementById("sheettitle").textContent = cur
+    ? (isRev ? "تعديل مراجعة" : (series ? "تعديل حصة متكرّرة" : "تعديل الحصة"))
+    : (isRev ? "مراجعة اختبار جديدة" : "موعد جديد");
   document.getElementById("f-kind-hint").hidden = !isRev;
   /* المراجعة موعد واحد: يُخفى خيار التكرار كله حتى لا يُضبط بالخطأ */
   document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev;
@@ -2323,9 +2380,6 @@ function openSheet(les, date, occDate){
   };
   const ds = les ? les.date : (date || state.sel);
   const repeating = les && isRep(les);
-  document.getElementById("sheettitle").textContent = les
-    ? (isReview(les) ? "تعديل مراجعة" : (repeating?"تعديل حصة متكرّرة":"تعديل الحصة"))
-    : "موعد جديد";
   document.getElementById("sheetsub").textContent = repeating
     ? `تبدأ من ${longDate(ds)} · ${repLabel(les)} — التعديل يسري على كل المواعيد`
     : longDate(ds);
@@ -2359,6 +2413,14 @@ function prefillFromLast(){
   const h = document.getElementById("f-hint");
   h.textContent = "✨ عُبِّئت الحقول من آخر حصة لهذا الطالب — عدّلها إن لزم.";
   h.hidden = false;
+}
+/* من بطاقة الطالب: مراجعة اختبار جاهزة باسمه وصفّه ومادته ووقته المعتاد (تاريخها اليوم المحدّد في التقويم) */
+function openReviewFor(name){
+  openSheet(null, null);
+  draft.kind = "review";
+  document.getElementById("f-student").value = name;
+  prefillFromLast();      // تملأ الصف والمادة والمدة ووقت البدء من آخر حصة له
+  paintOpts();            // لا يضرّ تكرارها: تضمن ظهور النوع والعنوان حتى لو لم تجد التعبئة شيئًا
 }
 document.getElementById("f-student").addEventListener("change", prefillFromLast);
 document.getElementById("f-student").addEventListener("input", e=>{ if(e.inputType==="insertReplacementText") prefillFromLast(); });
@@ -2415,21 +2477,21 @@ document.getElementById("f-del").onclick = ()=>{
   if(isRep(l)){
     askConfirm({
       title:"حذف حصة متكرّرة",
-      text:"هذه الحصة تتكرّر. اختر ما تريد حذفه — لا يمكن التراجع.",
+      text:"هذه الحصة تتكرّر. اختر ما تريد حذفه.",
       what:(l.student||"")+" — موعد "+longDate(ds)+" · "+fmtT(l.from),
       ok:"حذف السلسلة كلها",
       ok2:"حذف موعد "+longDate(ds)+" فقط",
-      run: ()=>delLesson(id),
-      run2: ()=>putLesson(Object.assign({}, l, {skip:(l.skip||[]).concat(ds)}))
+      run: ()=>withUndo("حُذفت السلسلة كلها", ()=>delLesson(id)),
+      run2: ()=>withUndo("حُذف هذا الموعد", ()=>putLesson(Object.assign({}, l, {skip:(l.skip||[]).concat(ds)})))
     });
     return;
   }
   askConfirm({
-    title:"حذف الحصة",
-    text:"سيُحذف هذا الموعد نهائيًا.",
+    title:isReview(l) ? "حذف المراجعة" : "حذف الحصة",
+    text:"سيُحذف هذا الموعد.",
     what:(l.student||"")+" — "+longDate(l.date)+" · "+fmtT(l.from),
     ok:"حذف",
-    run: ()=>delLesson(id)
+    run: ()=>withUndo(isReview(l) ? "حُذفت المراجعة" : "حُذفت الحصة", ()=>delLesson(id))
   });
 };
 

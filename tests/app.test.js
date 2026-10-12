@@ -163,6 +163,156 @@ test("تغيّر اليوم أثناء فتح التطبيق يُحدِّث ال
   assert.equal(app.t.today(), real);
 });
 
+test("مراجعة الاختبار: موعد واحد لا يتكرّر ويُحتسب حصة في العدد والحساب والتقرير", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  addLesson(app, { student: "أحمد", date: today, from: "10:00", dur: 60 });          // حصة عادية
+  d.querySelector("[data-add]").click();
+  d.querySelector('#f-kind [data-v="review"]').click();
+  assert.equal(d.getElementById("f-rep").closest(".field").hidden, true, "التكرار مخفي للمراجعة");
+  assert.equal(d.getElementById("sheettitle").textContent, "مراجعة اختبار جديدة");
+  d.getElementById("f-student").value = "أحمد";
+  d.getElementById("f-date").value = today;
+  d.getElementById("f-from").value = "13:00";
+  d.getElementById("f-save").click();
+  const rev = t.lessons().find(l => l.kind === "review");
+  assert.ok(rev && rev.rep.t === "none" && rev.student === "أحمد");
+
+  d.querySelectorAll("[data-toggle]").forEach(b => b.click());                        // نفّذ الاثنتين
+  assert.equal(t.lessons().filter(l => l.done).length, 2);
+  t.setTab("pay"); w.render();
+  const cnt = d.querySelector(".stu-card .cnt").textContent;
+  assert.ok(cnt.includes("2") && cnt.includes("منها 1 مراجعة"), cnt);
+  assert.equal(w.doneSplit("أحمد").rev, 1);
+  t.setTab("stu"); w.render();
+  assert.ok(d.querySelector(".stu-h .cnt").textContent.includes("منها 1 مراجعة"));
+  t.setTab("stats"); w.render();
+  assert.ok(d.querySelector(".tile .k").textContent.includes("منها 1 مراجعة"));
+  assert.deepEqual(app.errors, []);
+});
+
+test("مراجعة الاختبار: لا يُعرض خيار النوع عند تعديل سلسلة متكرّرة (حتى لا تُحذف مواعيدها بصمت)", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = "سالم";
+  d.getElementById("f-date").value = t.today();
+  d.querySelector('#f-rep [data-v="weekly"]').click();
+  d.getElementById("f-save").click();
+  assert.equal(t.lessons()[0].rep.t, "weekly");
+  d.querySelector("[data-edit]").click();
+  assert.equal(d.getElementById("f-kind").closest(".field").hidden, true);
+  d.getElementById("f-cancel").click();
+  // حصة عادية غير متكرّرة: النوع متاح، والتحويل إلى مراجعة يحفظ kind دون المساس بالموعد
+  addLesson(app, { student: "ليلى", date: t.today(), from: "20:00" });
+  d.querySelector('[data-edit]:not([data-edit^="' + t.lessons()[0].id + '"])').click();
+  assert.equal(d.getElementById("f-kind").closest(".field").hidden, false);
+  d.querySelector('#f-kind [data-v="review"]').click();
+  assert.equal(d.getElementById("sheettitle").textContent, "تعديل مراجعة");
+  d.getElementById("f-save").click();
+  assert.equal(t.lessons().find(l => l.student === "ليلى").kind, "review");
+  assert.equal(t.lessons().length, 2);
+});
+
+test("زر «+ موعد مراجعة اختبار» في بطاقة الطالب يفتح النموذج جاهزًا من آخر حصة له", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "سلمى", date: t.today(), from: "17:15", dur: 120 });
+  t.setTab("stu"); w.render();
+  d.querySelector('[data-rev="سلمى"]').click();
+  assert.equal(d.getElementById("scrim").hidden, false);
+  assert.equal(d.getElementById("f-student").value, "سلمى");
+  assert.equal(d.querySelector('#f-kind [aria-pressed="true"]').dataset.v, "review");
+  assert.equal(d.getElementById("f-from").value, "17:15");
+  assert.equal(d.querySelector('#f-dur [aria-pressed="true"]').dataset.v, "120");
+  d.getElementById("f-save").click();
+  const rev = t.lessons().filter(l => l.kind === "review");
+  assert.equal(rev.length, 1);
+  assert.equal(rev[0].student, "سلمى");
+  assert.ok(d.getElementById("main").innerHTML.includes("مراجعة اختبار"), "بطاقة الطالب تُظهر المراجعة القادمة");
+  // الطالب المؤرشف لا يحمل الزر
+  d.querySelector('[data-arch="سلمى"]').click();
+  assert.equal(d.querySelector('[data-rev="سلمى"]'), null);
+});
+
+test("التراجع بعد الحذف: يعيد الحصة، ويسقط الزر عند أي تعديل لاحق", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  const bar = () => d.getElementById("undobar");
+  assert.equal(bar().hidden, true);
+  addLesson(app, { student: "ليلى", date: t.today() });
+  d.querySelector("[data-edit]").click();
+  d.getElementById("f-del").click();
+  d.getElementById("c-ok").click();
+  assert.equal(t.lessons().length, 0);
+  assert.equal(bar().hidden, false);
+  assert.ok(bar().textContent.includes("حُذفت الحصة"));
+  d.getElementById("undo-btn").click();
+  assert.equal(t.lessons().length, 1);
+  assert.equal(t.lessons()[0].student, "ليلى");
+  assert.equal(bar().hidden, true);
+
+  // حذف ثم تعديل آخر قبل الضغط: يسقط الزر ولا يمكن إلغاء تعديل أحدث بالخطأ
+  d.querySelector("[data-edit]").click();
+  d.getElementById("f-del").click();
+  d.getElementById("c-ok").click();
+  assert.equal(bar().hidden, false);
+  addLesson(app, { student: "جديد", date: t.today(), from: "21:00" });
+  assert.equal(bar().hidden, true);
+  assert.equal(t.lessons().length, 1);
+  assert.deepEqual(app.errors, []);
+});
+
+test("التراجع يشمل الدفعات وحذف درس من الخطة والاستبدال الكامل", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "أحمد", date: t.today() });
+
+  // دفعة
+  t.setTab("pay"); w.render();
+  const card = d.querySelector(".stu-card");
+  card.querySelector("[data-newpay]").value = "7.5";
+  card.querySelector("[data-addpay]").click();
+  d.querySelector("[data-delpay]").click();
+  d.getElementById("c-ok").click();
+  assert.equal(t.money().pays.length, 0);
+  d.getElementById("undo-btn").click();
+  assert.equal(t.money().pays.length, 1);
+  assert.equal(t.money().paid["أحمد"], 7.5);
+
+  // درس من الخطة (والخطة مفتوحة): يعود الدرس وحالته ويُعاد رسم النافذة
+  t.setTab("prog"); w.render();
+  d.querySelector("[data-plan]").click();
+  d.getElementById("l-add").value = "درس تجريبي";
+  d.getElementById("l-addbtn").click();
+  const item = t.lib()["chem-10"].slice(-1)[0];
+  d.querySelector(`[data-cyclestatus="${item.id}"]`).click();                // جاري الشرح
+  assert.ok(t.prog()["أحمد"][item.id]);
+  d.querySelector(`[data-pdel="${item.id}"]`).click();
+  assert.equal(t.lib()["chem-10"].some(x => x.id === item.id), false);
+  assert.equal(t.prog()["أحمد"][item.id], undefined);
+  d.getElementById("undo-btn").click();
+  assert.equal(t.lib()["chem-10"].some(x => x.id === item.id), true);
+  assert.ok(t.prog()["أحمد"][item.id]);
+  assert.ok(d.querySelector(`[data-pdel="${item.id}"]`), "قائمة الخطة المفتوحة أُعيد رسمها");
+  d.getElementById("l-close").click();
+
+  // الاسترجاع السحابي (بلا علامة undoable) لا يعرض «تراجع»: قد يكتب فوق نسخة جهاز آخر
+  const cur = JSON.parse(w.backupBlob());
+  w.doImport(cur, true);
+  assert.equal(d.getElementById("undobar").hidden, true);
+  w.doImport(cur, false);                                                   // الدمج لا يعرض «تراجع» أيضًا
+  assert.equal(d.getElementById("undobar").hidden, true);
+  w.doImport({ lessons: [], money: { due: {}, paid: {}, pays: [] } }, true, true);   // استيراد ملف بالاستبدال
+  assert.equal(t.lessons().length, 0);
+  assert.ok(d.getElementById("undobar").textContent.includes("استُبدلت"));
+  d.getElementById("undo-btn").click();
+  assert.equal(t.lessons().length, 1);
+  assert.equal(t.money().paid["أحمد"], 7.5);
+  assert.deepEqual(app.errors, []);
+});
+
 test("فحوص ثابتة: .num معزولة اتجاهيًا، ولا prompt() أصلي، وكتلة JS سليمة", () => {
   assert.match(INDEX, /\.num\{[^}]*direction:ltr[^}]*unicode-bidi:isolate/);
   const bad = INDEX.split("\n").filter(l => /\bprompt\(/.test(l) && !l.includes("/*") && !l.includes("//"));
