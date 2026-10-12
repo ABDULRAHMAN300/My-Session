@@ -542,6 +542,12 @@ img,svg,canvas{max-width:100%;height:auto}
       <div class="opts" id="f-kind"></div>
       <p class="hint" id="f-kind-hint" hidden style="margin:6px 0 0;text-align:start">مراجعة اختبار: موعد واحد لا يتكرّر، ويُحتسب حصة كاملة في عدد الحصص.</p>
     </div>
+    <div class="field" id="f-bill-field" hidden>
+      <label for="f-bill">احتساب المراجعة</label>
+      <div class="opts" id="f-bill"></div>
+      <input type="number" inputmode="decimal" min="0" step="0.5" id="f-fee" placeholder="المبلغ بالدينار" hidden style="margin-top:8px">
+      <p class="hint" id="f-bill-hint" style="margin:6px 0 0;text-align:start"></p>
+    </div>
     <div class="field">
       <label for="f-student">اسم الطالب</label>
       <input type="text" id="f-student" list="studentlist" placeholder="مثال: عبدالله الخالدي" autocomplete="off">
@@ -950,6 +956,10 @@ function markLesson(student, itemId, ds, status){
   saveProg();
 }
 function doneCount(n){ return doneUpToToday().filter(l=>(l.student||"بدون اسم")===n).length; }
+/* مراجعة منفَّذة بمبلغ على الحساب: تُضاف قيمتها إلى المستحق تلقائيًا (والمراجعة «ضمن الحصص» لا مبلغ لها) */
+const isFeeRev = l => isReview(l) && l.bill === "fee" && Number(l.fee) > 0;
+function revFee(n){ return doneUpToToday().filter(l=>(l.student||"بدون اسم")===n && isFeeRev(l)).reduce((t,l)=>t+Number(l.fee),0); }
+const dueOf = n => (Number(money.due[n])||0) + revFee(n);
 /* المراجعة تُحتسب حصة كاملة؛ هذه الدالة تفصلها للعرض فقط */
 function doneSplit(n){
   const ls = doneUpToToday().filter(l=>(l.student||"بدون اسم")===n);
@@ -1294,12 +1304,12 @@ function renderPay(){
   const names = allStudents();
   let tDue = 0, tPaid = 0, rest = 0;
   names.forEach(n=>{
-    const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+    const due = dueOf(n), paid = Number(money.paid[n])||0;
     tDue += due; tPaid += paid;
     if(due > 0) rest += due - paid;          // المتبقي يُحسب فقط لمن كُتب له مستحق
   });
   const owing = names.filter(n=>{
-    const due = Number(money.due[n])||0;
+    const due = dueOf(n);
     return due > 0 && due - (Number(money.paid[n])||0) > 0.0005;
   }).length;
 
@@ -1321,7 +1331,7 @@ function renderPay(){
 
   shown.forEach(n=>{
     const m = studentMeta(n), g = gradeOf(m.grade), sb = subjOf(m.subj);
-    const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+    const fee = revFee(n), due = (Number(money.due[n])||0) + fee, paid = Number(money.paid[n])||0;
     const hasDue = due > 0, r = due - paid;
     const cleared = hasDue && r <= 0.0005;
     html += `<div class="card stu-card" style="--acc:${sb.c}">
@@ -1335,6 +1345,7 @@ function renderPay(){
         <label>المدفوع<input type="number" inputmode="decimal" min="0" step="0.5" data-paid="${esc(n)}" value="${money.paid[n]!==undefined?money.paid[n]:""}" placeholder="0"></label>
         <div class="rest ${hasDue?(cleared?"clear":"owed"):""}"><span>المتبقي</span><b class="num">${hasDue?kd(r):"—"}</b></div>
       </div>
+      ${fee>0?`<p class="hint" style="margin:8px 0 0;text-align:start">المستحق أعلاه <b class="num">${kd(due)}</b> يشمل <b class="num">${kd(fee)}</b> د.ك من مراجعات اختبار.</p>`:""}
       <div class="pay-row">
         <label>دفعة جديدة<input type="number" inputmode="decimal" min="0" step="0.5" data-newpay placeholder="0"></label>
         <input type="date" data-newpaydate value="${TODAY}">
@@ -1346,7 +1357,7 @@ function renderPay(){
     </div>`;
   });
 
-  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. مواعيد مراجعة الاختبارات تُحتسب حصصًا كاملة ضمن العدد. عدد الحصص للاطلاع فقط ولا يدخل في حساب المبلغ تلقائيًا.</p>`;
+  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. مواعيد مراجعة الاختبارات تُحتسب حصصًا كاملة ضمن العدد، وما اخترتَ له «مبلغ على الحساب» يُضاف إلى المستحق تلقائيًا بعد تنفيذه. عدد الحصص للاطلاع فقط ولا يدخل في حساب المبلغ تلقائيًا.</p>`;
   main.innerHTML = html;
 
   main.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{
@@ -2074,7 +2085,7 @@ function reportData(){
   const minsDone = done.reduce((t,l)=>t+durOf(l),0);
   const covered = coveredList(n).filter(c=>c.date>=from && c.date<=to).sort((a,b)=>a.date.localeCompare(b.date));
   const meta = studentMeta(n);
-  const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
+  const due = dueOf(n), paid = Number(money.paid[n])||0;
   const sl = studentSubjects(n).map(x=>({label:subjOf(x.subj).l, color:subjOf(x.subj).c, st:progStatKey(n, x.key)}));
   const revDone = done.filter(isReview).length;
   return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, covered, revDone,
@@ -2317,7 +2328,7 @@ document.getElementById("iinput").addEventListener("keydown", e=>{ if(e.key==="E
 
 /* ============ نافذة الحصة ============ */
 const scrim = document.getElementById("scrim");
-let draft = {kind:"normal", grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}, dur:90};
+let draft = {kind:"normal", bill:"session", fee:"", grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}, dur:90};
 
 function optButtons(el, items, cur, cb){
   el.innerHTML = items.map(it=>`<button class="opt" type="button" data-v="${it.v}" aria-pressed="${it.v===cur}">${it.dot?`<i style="background:${it.dot}"></i>`:""}${it.l}</button>`).join("");
@@ -2335,6 +2346,14 @@ function paintOpts(){
     ? (isRev ? "تعديل مراجعة" : (series ? "تعديل حصة متكرّرة" : "تعديل الحصة"))
     : (isRev ? "مراجعة اختبار جديدة" : "موعد جديد");
   document.getElementById("f-kind-hint").hidden = !isRev;
+  document.getElementById("f-bill-field").hidden = !isRev;
+  optButtons(document.getElementById("f-bill"), [{v:"session",l:"ضمن الحصص"},{v:"fee",l:"مبلغ على الحساب"}], draft.bill,
+    v=>{ draft.bill=v; paintOpts(); });
+  const feeEl = document.getElementById("f-fee");
+  feeEl.hidden = draft.bill !== "fee";
+  document.getElementById("f-bill-hint").textContent = draft.bill === "fee"
+    ? "يُضاف المبلغ إلى مستحق الطالب في «الحسابات» بعد تنفيذ المراجعة، وتبقى محسوبة حصة في العدد."
+    : "تُحسب حصة كاملة في العدد، بلا مبلغ إضافي.";
   /* المراجعة موعد واحد: يُخفى خيار التكرار كله حتى لا يُضبط بالخطأ */
   document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev;
   optButtons(document.getElementById("f-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), draft.grade,
@@ -2372,6 +2391,8 @@ function openSheet(les, date, occDate){
   state.occDate = occDate || (les ? les.date : null);
   draft = {
     kind:  les ? (les.kind||"normal") : "normal",
+    bill:  les && les.bill === "fee" ? "fee" : "session",
+    fee:   les && les.fee ? String(les.fee) : "",
     grade: les ? (les.grade||"10") : draft.grade,
     subj:  les ? (les.subj||"chem") : draft.subj,
     rep:   les && les.rep ? {t:les.rep.t||"none", d:(les.rep.d||[]).slice(), until:les.rep.until||""}
@@ -2387,6 +2408,7 @@ function openSheet(les, date, occDate){
   document.getElementById("f-note").value    = les ? (les.note||"") : "";
   document.getElementById("f-date").value    = ds;
   document.getElementById("f-from").value    = les ? (les.from||"16:00") : "16:00";
+  document.getElementById("f-fee").value = draft.fee;
   _prefilledFor = null;
   document.getElementById("f-hint").hidden = true;
   document.getElementById("f-del").hidden    = !les;
@@ -2442,6 +2464,8 @@ document.getElementById("f-save").onclick = ()=>{
   if(!student){ show("اكتب اسم الطالب."); document.getElementById("f-student").focus(); return; }
   if(!date){ show("اختر تاريخ الحصة."); return; }
   if(!from){ show("حدّد وقت البدء."); return; }
+  const fee = draft.kind==="review" && draft.bill==="fee" ? Number(document.getElementById("f-fee").value) : 0;
+  if(draft.kind==="review" && draft.bill==="fee" && !(fee>0)){ show("اكتب مبلغ المراجعة."); document.getElementById("f-fee").focus(); return; }
 
   const old = state.editing ? lessons.find(l=>l.id===state.editing) : null;
   const until = document.getElementById("f-until").value || "";
@@ -2453,7 +2477,7 @@ document.getElementById("f-save").onclick = ()=>{
   }
   const l = {
     id: old ? old.id : "l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    student, kind:draft.kind, grade:draft.grade, subj:draft.subj, date, from, to,
+    student, kind:draft.kind, bill: fee>0 ? "fee" : "session", fee: fee>0 ? fee : 0, grade:draft.grade, subj:draft.subj, date, from, to,
     note: document.getElementById("f-note").value.trim(),
     done: (old && rep.t==="none") ? !!old.done : false,
     rep,
