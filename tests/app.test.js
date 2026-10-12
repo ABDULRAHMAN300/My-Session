@@ -389,3 +389,55 @@ test("قفل التطبيق: تفعيل برمز، قفل، رمز خاطئ، ف
   assert.equal(d.defaultView.localStorage.getItem("hisas_pin_v1"), null);
   assert.deepEqual(app.errors, []);
 });
+
+test("مراجعة في يوم فيه حصة لنفس الطالب: تحلّ محلّها بلا تعارض، وحصة طالب آخر لا تُمسّ، و«تراجع» يعيدها", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  const addReview = (student, from) => {
+    d.querySelector("[data-add]").click();
+    d.querySelector('#f-kind [data-v="review"]').click();
+    d.getElementById("f-student").value = student;
+    d.getElementById("f-date").value = today;
+    d.getElementById("f-from").value = from;
+    d.getElementById("f-save").click();
+  };
+  addLesson(app, { student: "أحمد", date: today, from: "16:00" });
+  addLesson(app, { student: "سالم", date: today, from: "19:00" });
+  addReview("أحمد", "16:30");                                   // كانا سيتعارضان لو بقيت الحصتان
+  let ls = t.lessons();
+  assert.equal(ls.filter(l => l.student === "أحمد").length, 1, "حصة أحمد العادية حُذفت");
+  assert.equal(ls.find(l => l.student === "أحمد").kind, "review");
+  assert.ok(ls.find(l => l.student === "سالم"), "حصة طالب آخر لم تُمسّ");
+  assert.equal(t.clashSet(w.lessonsOn(today)).size, 0);
+  d.getElementById("undo-btn").click();
+  ls = t.lessons();
+  assert.equal(ls.filter(l => l.student === "أحمد").length, 1);
+  assert.equal(ls.find(l => l.student === "أحمد").kind || "normal", "normal", "التراجع أعاد الحصة العادية");
+  assert.deepEqual(app.errors, []);
+});
+
+test("مراجعة فوق حصة متكرّرة: يُتخطّى ذلك اليوم فقط وتبقى السلسلة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = "ليلى";
+  d.getElementById("f-date").value = today;
+  d.getElementById("f-from").value = "16:00";
+  d.querySelector('#f-rep [data-v="daily"]').click();
+  d.getElementById("f-save").click();
+  d.querySelector("[data-add]").click();
+  d.querySelector('#f-kind [data-v="review"]').click();
+  d.getElementById("f-student").value = "ليلى";
+  d.getElementById("f-date").value = today;
+  d.getElementById("f-from").value = "16:00";
+  d.getElementById("f-save").click();
+  const series = t.lessons().find(l => l.rep && l.rep.t === "daily");
+  assert.ok(series, "السلسلة باقية");
+  assert.deepEqual(plain(series.skip), [today]);
+  const on = w.lessonsOn(today).filter(l => l.student === "ليلى");
+  assert.equal(on.length, 1);
+  assert.equal(on[0].kind, "review");
+  assert.deepEqual(app.errors, []);
+});
