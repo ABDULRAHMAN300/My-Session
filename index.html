@@ -431,7 +431,22 @@ body.rp-open{overflow:hidden}
 button,a,[role="checkbox"]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 /* iOS يكبّر الصفحة عند التركيز على حقل خطه أقل من 16px */
 /* iOS يكبّر الصفحة تلقائيًا عند التركيز على أي حقل خطه أقل من 16px */
-input,textarea,select,.field input,.field textarea,.pay-fields input{font-size:16px}
+input:not([type="file"]),textarea,select{font-size:16px!important}   /* !important: بعض القواعد الأخصّ (دفعة جديدة، رمز الجهاز) كانت تصغّره إلى 13.5px فيكبّر iOS الصفحة */
+/* قفل التطبيق */
+#lock{position:fixed;inset:0;z-index:300;background:var(--bg);display:grid;place-items:center;padding:24px;overflow:auto}
+#lock[hidden]{display:none!important}
+.lk-box{width:100%;max-width:300px;text-align:center}
+.lk-box h2{margin:0;font-family:var(--font-d);font-size:19px}
+.lk-dots{display:flex;gap:14px;justify-content:center;margin:20px 0 8px;direction:ltr}
+.lk-dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--violet);transition:background .12s}
+.lk-dots i.on{background:var(--violet)}
+#lk-msg{min-height:20px;margin:0 0 6px;font-size:12.5px;color:var(--warn);line-height:1.6}
+#lk-msg.info{color:var(--ink-soft)}
+.lk-pad{display:grid;grid-template-columns:repeat(3,64px);gap:14px;justify-content:center;margin:10px 0 14px;direction:ltr}
+.lk-pad button{width:64px;height:64px;border-radius:50%;border:0;background:var(--surface-2);color:var(--ink);font-family:var(--font-d);font-size:22px;cursor:pointer}
+.lk-pad button:active{background:var(--line)}
+.lk-pad .ph{visibility:hidden}
+.lk-link{background:none;border:0;color:var(--ink-soft);font-size:12.5px;padding:8px;cursor:pointer;text-decoration:underline}
 /* ضبط المقاس على عرض الشاشة ومنع التمرير الأفقي */
 html,body{max-width:100%;overflow-x:hidden}
 *{min-width:0}
@@ -647,6 +662,17 @@ img,svg,canvas{max-width:100%;height:auto}
       <button class="btn primary" id="g-save" type="button">حفظ</button>
       <button class="btn ghost" id="g-later" type="button">لاحقًا</button>
     </div>
+  </div>
+</div>
+
+<div id="lock" hidden role="dialog" aria-modal="true" aria-labelledby="lk-title">
+  <div class="lk-box">
+    <h2 id="lk-title">التطبيق مقفل</h2>
+    <div class="lk-dots" id="lk-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <p id="lk-msg" aria-live="polite"></p>
+    <div class="lk-pad" id="lk-pad"></div>
+    <button class="lk-link" type="button" id="lk-cancel" hidden>إلغاء</button>
+    <button class="lk-link" type="button" id="lk-forgot" hidden>نسيت الرمز؟</button>
   </div>
 </div>
 
@@ -1513,6 +1539,19 @@ function renderStats(){
   } else html += `<p class="empty" style="padding:4px 0">لا بيانات بعد.</p>`;
   html += `</div>`;
 
+  html += `<div class="card"><h3>قفل التطبيق</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
+      ${hasPin()?"القفل مفعّل: يُطلب الرمز عند فتح التطبيق، وبعد دقيقة من تركه في الخلفية.":"رمز من 4 أرقام يحمي أسماء الطلاب والحسابات إن أخذ أحدٌ جوالك."}
+      هو حماية للاستخدام العادي، وليس تشفيرًا للبيانات.</p>
+    <div class="pay-row">
+      ${hasPin()
+        ? `<button class="minibtn solid" type="button" id="pin-now">قفل الآن</button>
+           <button class="minibtn" type="button" id="pin-change">تغيير الرمز</button>
+           <button class="minibtn" type="button" id="pin-off">إيقاف القفل</button>`
+        : `<button class="minibtn solid" type="button" id="pin-on">تفعيل القفل</button>`}
+    </div>
+  </div>`;
+
   html += `<div class="card"><h3>النسخ الاحتياطي السحابي</h3>
     <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.7">
       نسخة تلقائية صامتة في الخلفية بعد كل تعديل. احتفظ برمز جهازك — به وحده تُسترجع بياناتك لو حُذف
@@ -1551,6 +1590,7 @@ function renderStats(){
   main.innerHTML = html;
   wireCloud();
   wireBackup();
+  wireLock();
   wire();
 }
 
@@ -2528,6 +2568,115 @@ document.getElementById("themebtn").onclick = ()=>{
   try{ localStorage.setItem("hisas_theme", dark?"light":"dark"); }catch(e){}
 };
 try{ const th=localStorage.getItem("hisas_theme"); if(th) document.documentElement.setAttribute("data-theme",th); }catch(e){}
+
+/* ============ قفل التطبيق (رمز من 4 أرقام) ============
+   حماية للاستخدام العادي: يُحفظ الرمز مملَّحًا ومُجزَّأً على هذا الجهاز فقط ولا يدخل النسخ السحابي. */
+const PIN_LS = "hisas_pin_v1", PIN_UNTIL_LS = "hisas_pin_until", PIN_IDLE_MS = 60000;
+function cyrb53(str, seed){
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for(let i=0;i<str.length;i++){ const ch = str.charCodeAt(i); h1 = Math.imul(h1^ch, 2654435761); h2 = Math.imul(h2^ch, 1597334677); }
+  h1 = Math.imul(h1^(h1>>>16), 2246822507) ^ Math.imul(h2^(h2>>>13), 3266489909);
+  h2 = Math.imul(h2^(h2>>>16), 2246822507) ^ Math.imul(h1^(h1>>>13), 3266489909);
+  return (4294967296*(2097151&h2) + (h1>>>0)).toString(36);
+}
+const pinHash = (pin, salt) => { let h = pin+":"+salt; for(let i=0;i<2000;i++) h = cyrb53(h, i); return h; };
+function pinRec(){ try{ const r = JSON.parse(localStorage.getItem(PIN_LS)||"null"); return r && r.s && r.h ? r : null; }catch(e){ return null; } }
+function hasPin(){ return !!pinRec(); }
+function savePin(pin){
+  const s = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  try{ localStorage.setItem(PIN_LS, JSON.stringify({s, h:pinHash(pin, s)})); }catch(e){}
+}
+function clearPin(){ try{ localStorage.removeItem(PIN_LS); localStorage.removeItem(PIN_UNTIL_LS); }catch(e){} }
+let pinFails = 0;
+/* true إن صحّ الرمز، وإلا نصّ الخطأ. خمس محاولات خاطئة تُوقف المحاولة 30 ثانية (وتبقى بعد إعادة التحميل) */
+function checkPin(p){
+  let until = 0; try{ until = Number(localStorage.getItem(PIN_UNTIL_LS))||0; }catch(e){}
+  if(Date.now() < until) return `محاولات كثيرة. انتظر ${Math.ceil((until-Date.now())/1000)} ثانية.`;
+  const r = pinRec();
+  if(r && pinHash(p, r.s) === r.h){ pinFails = 0; return true; }
+  if(++pinFails >= 5){ pinFails = 0; try{ localStorage.setItem(PIN_UNTIL_LS, String(Date.now()+30000)); }catch(e){} return "5 محاولات خاطئة. انتظر 30 ثانية."; }
+  return "الرمز غير صحيح.";
+}
+const lockEl = document.getElementById("lock");
+let pinPad = null;
+function setInert(on){
+  [...document.body.children].forEach(el=>{ if(el!==lockEl && el.tagName!=="SCRIPT") el.inert = on; });
+}
+function paintPad(){
+  document.querySelectorAll("#lk-dots i").forEach((d,i)=>d.classList.toggle("on", !!pinPad && i<pinPad.buf.length));
+  const m = document.getElementById("lk-msg");
+  m.textContent = pinPad ? pinPad.msg : ""; m.classList.toggle("info", !!pinPad && !!pinPad.info);
+}
+function openPad(o){
+  pinPad = Object.assign({buf:"", msg:"", info:false, cancel:false, forgot:false}, o);
+  document.getElementById("lk-title").textContent = pinPad.title;
+  document.getElementById("lk-cancel").hidden = !pinPad.cancel;
+  document.getElementById("lk-forgot").hidden = !pinPad.forgot;
+  paintPad();
+  lockEl.hidden = false; setInert(true);
+}
+function closePad(){ pinPad = null; lockEl.hidden = true; setInert(false); paintPad(); }
+function padKey(k){
+  if(!pinPad) return;
+  if(k==="b") pinPad.buf = pinPad.buf.slice(0,-1);
+  else if(pinPad.buf.length < 4) pinPad.buf += k;
+  if(pinPad.buf.length === 4){
+    const p = pinPad.buf, h = pinPad.handler;
+    pinPad.buf = "";
+    const err = h(p);
+    if(pinPad && typeof err === "string"){ pinPad.msg = err; pinPad.info = false; }
+  }
+  paintPad();
+}
+(function buildPad(){
+  const box = document.getElementById("lk-pad");
+  box.innerHTML = ["1","2","3","4","5","6","7","8","9"].map(n=>`<button type="button" data-k="${n}">${n}</button>`).join("")
+    + `<button type="button" class="ph" tabindex="-1" aria-hidden="true"></button><button type="button" data-k="0">0</button><button type="button" data-k="b" aria-label="حذف رقم">⌫</button>`;
+  box.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>padKey(b.dataset.k));
+  document.getElementById("lk-cancel").onclick = ()=>closePad();
+  document.getElementById("lk-forgot").onclick = ()=>{
+    if(!pinPad) return;
+    pinPad.msg = "نسيت الرمز؟ امسح بيانات هذا الموقع من إعدادات المتصفح، ثم استرجع بياناتك برمز جهازك من «النسخ السحابي».";
+    pinPad.info = true; paintPad();
+  };
+  document.addEventListener("keydown", e=>{
+    if(!pinPad || lockEl.hidden) return;
+    if(/^[0-9]$/.test(e.key)){ padKey(e.key); e.preventDefault(); }
+    else if(e.key==="Backspace"){ padKey("b"); e.preventDefault(); }
+    else if(e.key==="Escape" && pinPad.cancel){ closePad(); }
+  });
+})();
+function lockNow(){
+  if(!hasPin()) return;
+  openPad({title:"التطبيق مقفل", msg:"أدخل الرمز", info:true, forgot:true,
+    handler:p=>{ const r = checkPin(p); if(r===true){ closePad(); return; } return r; }});
+}
+function askPin(title, then){
+  openPad({title, cancel:true,
+    handler:p=>{ const r = checkPin(p); if(r===true){ closePad(); then(); return; } return r; }});
+}
+function setPinFlow(){
+  openPad({title:"اختر رمزًا من 4 أرقام", cancel:true, handler:first=>{
+    openPad({title:"أعد إدخال الرمز", cancel:true, handler:again=>{
+      if(again !== first) return "الرمزان غير متطابقين. إلغاء ثم أعد المحاولة.";
+      savePin(again); closePad(); render();
+    }});
+  }});
+}
+function wireLock(){
+  const on = (id, fn) => { const b = document.getElementById(id); if(b) b.onclick = fn; };
+  on("pin-on", setPinFlow);
+  on("pin-now", lockNow);
+  on("pin-change", ()=>askPin("أدخل الرمز الحالي", setPinFlow));
+  on("pin-off", ()=>askPin("أدخل الرمز لإيقاف القفل", ()=>{ clearPin(); render(); }));
+}
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", ()=>{
+  if(!hasPin()) return;
+  if(document.hidden){ hiddenAt = Date.now(); return; }
+  if(hiddenAt && Date.now()-hiddenAt >= PIN_IDLE_MS && lockEl.hidden) lockNow();
+});
+lockNow();
 
 load();
 loadLib();
