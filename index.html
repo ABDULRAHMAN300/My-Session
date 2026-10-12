@@ -2530,7 +2530,20 @@ document.getElementById("f-save").onclick = ()=>{
   state.sel = date;
   const d = parse(date); state.cur = {y:d.getFullYear(), m:d.getMonth()};
   closeSheet();
-  putLesson(l);
+  /* مراجعة في يوم فيه حصة لنفس الطالب: تحلّ المراجعة محلّ الحصة (لا تعارض ولا حصتان) —
+     الحصة المفردة تُحذف، والمتكرّرة يُتخطّى هذا اليوم فقط. المنفَّذة والملغاة والمؤجَّلة لا تُمسّ. */
+  const dup = l.kind==="review"
+    ? lessonsOn(date).filter(o=>o.student===student && !isReview(o) && !o.done && !o._st && o.id!==l.id) : [];
+  if(dup.length){
+    withUndo("حلّت المراجعة محلّ حصة هذا اليوم", ()=>{
+      dup.forEach(o=>{
+        const b = lessons.find(x=>x.id===o.id); if(!b) return;
+        if(isRep(b)) lessons[lessons.indexOf(b)] = Object.assign({}, b, {skip:(b.skip||[]).concat(date)});
+        else lessons = lessons.filter(x=>x.id!==b.id);
+      });
+      putLesson(l);
+    });
+  } else putLesson(l);
 };
 
 document.getElementById("f-del").onclick = ()=>{
