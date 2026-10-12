@@ -45,6 +45,8 @@
   --g10:#F2760B;
   --g11:#E5184C;
   --g12:#0E9AA7;
+  --rev:#4338CA;
+  --on-rev:#FFFFFF;
   --warn:#E5184C;
   --on-violet:#FFFFFF;
   --grad:linear-gradient(135deg,#7B2FF7 0%,#B32FE0 55%,#FF4D9D 100%);
@@ -61,6 +63,7 @@
     --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
     --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
     --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC;
+    --rev:#A5B4FC; --on-rev:#1B1640;
     --warn:#FF6B8E; --on-violet:#180F2B;
     --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
     --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
@@ -73,6 +76,7 @@
   --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
   --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
   --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC;
+  --rev:#A5B4FC; --on-rev:#1B1640;
   --warn:#FF6B8E; --on-violet:#180F2B;
   --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
   --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
@@ -151,6 +155,10 @@ button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
 .pill i{width:6px;height:6px;border-radius:50%;display:block}
 .pill.rep{background:color-mix(in srgb,var(--violet) 14%,transparent);color:var(--violet)}
 .pill.clash{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.pill.rev{background:var(--rev);color:var(--on-rev);font-weight:700}
+.les.is-rev .bar{background:var(--rev)!important}
+.cell .revdot{position:absolute;inset-block-start:3px;inset-inline-start:4px;width:6px;height:6px;border-radius:1.5px;background:var(--rev);transform:rotate(45deg)}
+.cell.sel .revdot{background:var(--on-violet)}
 .acts{display:flex;flex-direction:column;gap:4px;flex-shrink:0}
 .chk{width:22px;height:22px;border-radius:7px;border:1.8px solid var(--line);background:var(--surface);
   display:grid;place-items:center;font-size:12px;color:transparent}
@@ -521,6 +529,11 @@ img,svg,canvas{max-width:100%;height:auto}
     <h2 id="sheettitle">حصة جديدة</h2>
     <p class="sh-sub" id="sheetsub"></p>
     <div class="field">
+      <label for="f-kind">نوع الموعد</label>
+      <div class="opts" id="f-kind"></div>
+      <p class="hint" id="f-kind-hint" hidden style="margin:6px 0 0;text-align:start">مراجعة اختبار: موعد واحد لا يتكرّر، ويُحتسب حصة كاملة في عدد الحصص.</p>
+    </div>
+    <div class="field">
       <label for="f-student">اسم الطالب</label>
       <input type="text" id="f-student" list="studentlist" placeholder="مثال: عبدالله الخالدي" autocomplete="off">
       <datalist id="studentlist"></datalist>
@@ -668,6 +681,11 @@ const SUBJECTS = [
   {v:"chem", l:"كيمياء",  c:"var(--chem)"},
   {v:"sci",  l:"العلوم المتكاملة", c:"var(--sci)", g:["10"]}
 ];
+const KINDS = [
+  {v:"normal", l:"حصة",           c:"var(--violet)"},
+  {v:"review", l:"مراجعة اختبار", c:"var(--rev)"}
+];
+const isReview = l => (l && l.kind) === "review";
 const REPEATS = [
   {v:"none",    l:"بدون تكرار"},
   {v:"weekly",  l:"أسبوعي"},
@@ -889,6 +907,12 @@ function markLesson(student, itemId, ds, status){
   saveProg();
 }
 function doneCount(n){ return doneUpToToday().filter(l=>(l.student||"بدون اسم")===n).length; }
+/* المراجعة تُحتسب حصة كاملة؛ هذه الدالة تفصلها للعرض فقط */
+function doneSplit(n){
+  const ls = doneUpToToday().filter(l=>(l.student||"بدون اسم")===n);
+  const rev = ls.filter(isReview).length;
+  return {total: ls.length, rev, normal: ls.length - rev};
+}
 
 /* ============ التكرار ============ */
 const isRep = l => !!(l.rep && l.rep.t && l.rep.t !== "none");
@@ -1024,7 +1048,7 @@ function monthNav(){
 function lessonRow(l, clashes){
   const g = gradeOf(l.grade), sb = subjOf(l.subj);
   const isClash = clashes && clashes.has(l.id+"|"+l.date);
-  return `<div class="les${l.done?" done":""}${l._st==="c"?" cancel":""}${l._st==="p"?" post":""}">
+  return `<div class="les${l.done?" done":""}${isReview(l)?" is-rev":""}${l._st==="c"?" cancel":""}${l._st==="p"?" post":""}">
     <span class="time num"><b>${fmtT(l.from)}</b><span>${fmtT(l.to)}</span></span>
     <span class="bar" style="background:${sb.c}"></span>
     <span class="body">
@@ -1034,6 +1058,7 @@ function lessonRow(l, clashes){
         <span class="pill" style="background:color-mix(in srgb,${sb.c} 15%,transparent);color:${sb.c}"><i style="background:${sb.c}"></i>${sb.l}</span>
         <span class="pill" style="background:color-mix(in srgb,${g.c} 15%,transparent);color:${g.c}">${g.l}</span>
         <span class="pill">${durShort(durOf(l))}</span>
+        ${isReview(l)?`<span class="pill rev">مراجعة اختبار</span>`:""}
         ${l._rep?`<span class="pill rep">↻ ${esc(repLabel(l))}</span>`:""}
         ${l._st==="c"?`<span class="pill st-c">ملغاة</span>`:""}${l._st==="p"?`<span class="pill st-p">مؤجَّلة</span>`:""}
         ${isClash?`<span class="pill clash">تعارض</span>`:""}
@@ -1087,6 +1112,7 @@ function renderCal(){
       const dots = [...new Set(list.map(l=>subjOf(l.subj).c))].slice(0,3);
       html += `<button type="button" class="${cls.join(" ")}" data-date="${ds}" aria-label="${longDate(ds)}">
         ${clashes.size?`<span class="clash"></span>`:""}
+        ${list.some(isReview)?`<span class="revdot"></span>`:""}
         <span class="d num">${d}</span>
         <span class="dots">${dots.map(c=>`<i style="background:${c}"></i>`).join("")}</span>
       </button>`;
@@ -1124,6 +1150,7 @@ function renderCal(){
 function legend(){
   return `<div class="legend">
     ${SUBJECTS.map(s=>`<span><i style="background:${s.c}"></i>${s.l}</span>`).join("")}
+    <span><i style="background:var(--rev);border-radius:2px;transform:rotate(45deg)"></i>مراجعة اختبار</span>
     <span><i style="background:var(--warn)"></i>تعارض مواعيد</span>
   </div>
   <p class="hint">البيانات محفوظة على هذا الجهاز فقط — لا مزامنة ولا حساب.</p>`;
@@ -1189,7 +1216,7 @@ function renderStudents(){
           <button class="iconbtn" type="button" data-rename="${esc(n)}" aria-label="إعادة تسمية الطالب">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
           </button>
-          <span class="cnt"><b class="num">${ls.length}</b><span>حصة</span></span>
+          <span class="cnt"><b class="num">${ls.length}</b><span>${(()=>{const r=ls.filter(isReview).length;return r?`حصة · منها ${r} مراجعة`:"حصة";})()}</span></span>
         </div>
         <div class="nextline">
           ${next
@@ -1256,7 +1283,7 @@ function renderPay(){
       <div class="stu-h">
         <span class="avatar" style="background:${g.c}">${g.s}</span>
         <span class="who"><b>${esc(n)}</b><span>${g.l} · ${sb.l}</span></span>
-        <span class="cnt"><b class="num">${doneCount(n)}</b><span>حصة منفَّذة</span></span>
+        <span class="cnt"><b class="num">${doneCount(n)}</b><span>${(()=>{const d=doneSplit(n);return d.rev?`منفَّذة · منها ${d.rev} مراجعة`:"حصة منفَّذة";})()}</span></span>
       </div>
       <div class="pay-fields">
         <label>المستحق<input type="number" inputmode="decimal" min="0" step="0.5" data-due="${esc(n)}" value="${money.due[n]!==undefined?money.due[n]:""}" placeholder="0"></label>
@@ -1274,7 +1301,7 @@ function renderPay(){
     </div>`;
   });
 
-  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. عدد الحصص للاطلاع فقط ولا يدخل في الحساب.</p>`;
+  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. مواعيد مراجعة الاختبارات تُحتسب حصصًا كاملة ضمن العدد. عدد الحصص للاطلاع فقط ولا يدخل في حساب المبلغ تلقائيًا.</p>`;
   main.innerHTML = html;
 
   main.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{
@@ -1999,7 +2026,8 @@ function reportData(){
   const meta = studentMeta(n);
   const due = Number(money.due[n])||0, paid = Number(money.paid[n])||0;
   const sl = studentSubjects(n).map(x=>({label:subjOf(x.subj).l, color:subjOf(x.subj).c, st:progStatKey(n, x.key)}));
-  return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, covered,
+  const revDone = done.filter(isReview).length;
+  return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, covered, revDone,
           due, paid, rest: due-paid, subs:sl.map(x=>x.label), g:gradeOf(meta.grade), ps:progStat(n), byS:sl};
 }
 function paintReport(){
@@ -2013,7 +2041,7 @@ function paintReport(){
       <p>${d.g.l} · ${d.subs.join(" و")} · ${d.label}</p>
     </header>
     <div class="tiles">
-      <div class="tile"><div class="v num">${d.done.length}</div><div class="k">حصص منفَّذة</div></div>
+      <div class="tile"><div class="v num">${d.done.length}</div><div class="k">${d.revDone?`حصص منفَّذة · منها ${d.revDone} مراجعة`:"حصص منفَّذة"}</div></div>
       <div class="tile"><div class="v num" style="font-size:20px">${d.minsDone?durShort(d.minsDone):"0"}</div><div class="k">مدة التدريس</div></div>
       <div class="tile"><div class="v num">${d.canc.length}</div><div class="k">ملغاة</div></div>
       <div class="tile"><div class="v num">${d.post.length}</div><div class="k">مؤجَّلة</div></div>
@@ -2042,6 +2070,7 @@ function reportText(){
   const d = reportData();
   const L = [`تقرير ${d.label} — ${d.n}`, `${d.g.l} · ${d.subs.join(" و")}`, ""];
   L.push(`الحصص المنفَّذة: ${d.done.length}${d.minsDone?` (${durShort(d.minsDone)})`:""}`);
+  if(d.revDone) L.push(`منها مراجعة اختبار: ${d.revDone}`);
   if(d.canc.length) L.push(`الملغاة: ${d.canc.length}`);
   if(d.post.length) L.push(`المؤجَّلة: ${d.post.length}`);
   if(d.covered.length){ L.push("", "الدروس التي شُرحت:"); d.covered.forEach(c=>L.push(`• ${shortDate(c.date)}: ${c.t}`)); }
@@ -2238,13 +2267,19 @@ document.getElementById("iinput").addEventListener("keydown", e=>{ if(e.key==="E
 
 /* ============ نافذة الحصة ============ */
 const scrim = document.getElementById("scrim");
-let draft = {grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}, dur:90};
+let draft = {kind:"normal", grade:"10", subj:"chem", rep:{t:"none",d:[],until:""}, dur:90};
 
 function optButtons(el, items, cur, cb){
   el.innerHTML = items.map(it=>`<button class="opt" type="button" data-v="${it.v}" aria-pressed="${it.v===cur}">${it.dot?`<i style="background:${it.dot}"></i>`:""}${it.l}</button>`).join("");
   el.querySelectorAll(".opt").forEach(b=>b.onclick=()=>cb(b.dataset.v));
 }
 function paintOpts(){
+  optButtons(document.getElementById("f-kind"), KINDS.map(k=>({v:k.v,l:k.l,dot:k.c})), draft.kind,
+    v=>{ draft.kind=v; if(v==="review") draft.rep={t:"none",d:[],until:""}; paintOpts(); });
+  const isRev = draft.kind === "review";
+  document.getElementById("f-kind-hint").hidden = !isRev;
+  /* المراجعة موعد واحد: يُخفى خيار التكرار كله حتى لا يُضبط بالخطأ */
+  document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev;
   optButtons(document.getElementById("f-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), draft.grade,
     v=>{ draft.grade=v; if(!subjAllowed(draft.subj, v)) draft.subj="chem"; paintOpts(); });
   optButtons(document.getElementById("f-subj"),
@@ -2279,6 +2314,7 @@ function openSheet(les, date, occDate){
   state.editing = les ? les.id : null;
   state.occDate = occDate || (les ? les.date : null);
   draft = {
+    kind:  les ? (les.kind||"normal") : "normal",
     grade: les ? (les.grade||"10") : draft.grade,
     subj:  les ? (les.subj||"chem") : draft.subj,
     rep:   les && les.rep ? {t:les.rep.t||"none", d:(les.rep.d||[]).slice(), until:les.rep.until||""}
@@ -2287,7 +2323,9 @@ function openSheet(les, date, occDate){
   };
   const ds = les ? les.date : (date || state.sel);
   const repeating = les && isRep(les);
-  document.getElementById("sheettitle").textContent = les ? (repeating?"تعديل حصة متكرّرة":"تعديل الحصة") : "حصة جديدة";
+  document.getElementById("sheettitle").textContent = les
+    ? (isReview(les) ? "تعديل مراجعة" : (repeating?"تعديل حصة متكرّرة":"تعديل الحصة"))
+    : "موعد جديد";
   document.getElementById("sheetsub").textContent = repeating
     ? `تبدأ من ${longDate(ds)} · ${repLabel(les)} — التعديل يسري على كل المواعيد`
     : longDate(ds);
@@ -2346,14 +2384,14 @@ document.getElementById("f-save").onclick = ()=>{
   const old = state.editing ? lessons.find(l=>l.id===state.editing) : null;
   const until = document.getElementById("f-until").value || "";
   let rep = {t:"none", d:[], until:""};
-  if(draft.rep.t !== "none"){
+  if(draft.kind !== "review" && draft.rep.t !== "none"){
     let days = draft.rep.d.slice();
     if(draft.rep.t==="weekly" && !days.length) days = [parse(date).getDay()];
     rep = {t:draft.rep.t, d:days, until};
   }
   const l = {
     id: old ? old.id : "l"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
-    student, grade:draft.grade, subj:draft.subj, date, from, to,
+    student, kind:draft.kind, grade:draft.grade, subj:draft.subj, date, from, to,
     note: document.getElementById("f-note").value.trim(),
     done: (old && rep.t==="none") ? !!old.done : false,
     rep,
