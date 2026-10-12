@@ -318,3 +318,38 @@ test("فحوص ثابتة: .num معزولة اتجاهيًا، ولا prompt() 
   const bad = INDEX.split("\n").filter(l => /\bprompt\(/.test(l) && !l.includes("/*") && !l.includes("//"));
   assert.deepEqual(bad, []);
 });
+
+test("مراجعة بمبلغ على الحساب: تُضاف إلى المستحق بعد تنفيذها فقط، وتبقى حصة في العدد", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  d.querySelector("[data-add]").click();
+  d.querySelector('#f-kind [data-v="review"]').click();
+  assert.equal(d.getElementById("f-bill-field").hidden, false);
+  assert.equal(d.getElementById("f-fee").hidden, true, "حقل المبلغ مخفي ما دام الاحتساب «ضمن الحصص»");
+  d.querySelector('#f-bill [data-v="fee"]').click();
+  assert.equal(d.getElementById("f-fee").hidden, false);
+  d.getElementById("f-student").value = "ليلى";
+  d.getElementById("f-date").value = today;
+  d.getElementById("f-from").value = "13:00";
+  d.getElementById("f-save").click();                                                  // بلا مبلغ: يرفض
+  assert.equal(t.lessons().length, 0);
+  assert.equal(d.getElementById("f-msg").hidden, false);
+  d.getElementById("f-fee").value = "7.5";
+  d.getElementById("f-save").click();
+  const rev = t.lessons().find(l => l.student === "ليلى");
+  assert.equal(rev.kind, "review");
+  assert.equal(rev.bill, "fee");
+  assert.equal(rev.fee, 7.5);
+
+  t.setTab("pay"); w.render();
+  assert.ok(!d.querySelector(".stu-card").textContent.includes("من مراجعات اختبار"), "غير منفَّذة: لا تدخل الحساب");
+  t.setTab("cal"); w.render();
+  d.querySelectorAll("[data-toggle]").forEach(b => b.click());                        // نفّذها
+  t.setTab("pay"); w.render();
+  const card = d.querySelector(".stu-card").textContent;
+  assert.ok(card.includes("من مراجعات اختبار"), card);
+  assert.ok(d.querySelector(".tile .v").textContent.includes("7.5"), d.querySelector(".tile .v").textContent);
+  assert.equal(w.doneSplit("ليلى").rev, 1);
+  assert.deepEqual(app.errors, []);
+});
