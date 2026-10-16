@@ -1022,7 +1022,12 @@ function hits(l, ds){
   return false;
 }
 const occDone = (l, ds) => isRep(l) ? !!(l.doneOn||{})[ds] : !!l.done;
-const occOf = (l, ds) => Object.assign({}, l, {date:ds, done:occDone(l,ds), _rep:isRep(l), _st:(l.stat||{})[ds]||null});
+/* وقت خاص بيوم واحد داخل سلسلة متكرّرة: l.ov = {"2026-10-20": {from, to}} — لا يمسّ وقت السلسلة ولا بقية الأيام */
+const ovOf = (l, ds) => (isRep(l) && l.ov && l.ov[ds] && l.ov[ds].from && l.ov[ds].to) ? l.ov[ds] : null;
+const occOf = (l, ds) => {
+  const o = ovOf(l, ds);
+  return Object.assign({}, l, o ? {from:o.from, to:o.to} : {}, {date:ds, done:occDone(l,ds), _rep:isRep(l), _mv:!!o, _st:(l.stat||{})[ds]||null});
+};
 
 function lessonsOn(ds){
   return lessons.filter(l=>hits(l,ds)).map(l=>occOf(l,ds))
@@ -1139,6 +1144,7 @@ function lessonRow(l, clashes){
         <span class="pill">${durShort(durOf(l))}</span>
         ${isReview(l)?`<span class="pill rev">مراجعة اختبار</span>`:""}
         ${l._rep?`<span class="pill rep">↻ ${esc(repLabel(l))}</span>`:""}
+        ${l._mv?`<span class="pill rep">وقت خاص بهذا اليوم</span>`:""}
         ${l._st==="c"?`<span class="pill st-c">ملغاة</span>`:""}${l._st==="p"?`<span class="pill st-p">مؤجَّلة</span>`:""}
         ${isClash?`<span class="pill clash">تعارض</span>`:""}
       </span>
@@ -2429,6 +2435,8 @@ function paintOpts(){
 function openSheet(les, date, occDate){
   state.editing = les ? les.id : null;
   state.occDate = occDate || (les ? les.date : null);
+  /* وقت الموعد المعروض فعليًا في هذا اليوم (قد يكون وقتًا خاصًا بهذا اليوم لا وقت السلسلة) */
+  const shown = les ? (isRep(les) && state.occDate ? occOf(les, state.occDate) : les) : null;
   draft = {
     kind:  les ? (les.kind||"normal") : "normal",
     bill:  les && les.bill === "fee" ? "fee" : "session",
@@ -2437,17 +2445,17 @@ function openSheet(les, date, occDate){
     subj:  les ? (les.subj||"chem") : draft.subj,
     rep:   les && les.rep ? {t:les.rep.t||"none", d:(les.rep.d||[]).slice(), until:les.rep.until||""}
                           : {t:"none", d:[], until:""},
-    dur:   les ? nearestDur(mins(les.to||"17:30") - mins(les.from||"16:00")) : draft.dur
+    dur:   les ? nearestDur(mins(shown.to||"17:30") - mins(shown.from||"16:00")) : draft.dur
   };
   const ds = les ? les.date : (date || state.sel);
   const repeating = les && isRep(les);
   document.getElementById("sheetsub").textContent = repeating
-    ? `تبدأ من ${longDate(ds)} · ${repLabel(les)} — التعديل يسري على كل المواعيد`
+    ? `تبدأ من ${longDate(ds)} · ${repLabel(les)} — عند تغيير الوقت تختار: هذا اليوم فقط أو كل المواعيد`
     : longDate(ds);
   document.getElementById("f-student").value = les ? (les.student||"") : "";
   document.getElementById("f-note").value    = les ? (les.note||"") : "";
   document.getElementById("f-date").value    = ds;
-  document.getElementById("f-from").value    = les ? (les.from||"16:00") : "16:00";
+  document.getElementById("f-from").value    = les ? (shown.from||"16:00") : "16:00";
   document.getElementById("f-fee").value = draft.fee;
   _prefilledFor = null;
   document.getElementById("f-hint").hidden = true;
@@ -2524,26 +2532,54 @@ document.getElementById("f-save").onclick = ()=>{
     doneOn: rep.t==="none" ? {} : (old && old.doneOn ? old.doneOn : {}),
     skip:   rep.t==="none" ? [] : (old && old.skip   ? old.skip   : []),
     stat:   old && old.stat ? old.stat : {},
+    ov:     rep.t==="none" ? {} : (old && old.ov ? old.ov : {}),
     ts: old ? (old.ts||Date.now()) : Date.now()
   };
-  if(archived[student]){ delete archived[student]; saveArch(); }   // حصة جديدة لطالب مؤرشف = عاد للعمل
-  state.sel = date;
-  const d = parse(date); state.cur = {y:d.getFullYear(), m:d.getMonth()};
-  closeSheet();
-  /* مراجعة في يوم فيه حصة لنفس الطالب: تحلّ المراجعة محلّ الحصة (لا تعارض ولا حصتان) —
-     الحصة المفردة تُحذف، والمتكرّرة يُتخطّى هذا اليوم فقط. المنفَّذة والملغاة والمؤجَّلة لا تُمسّ. */
-  const dup = l.kind==="review"
-    ? lessonsOn(date).filter(o=>o.student===student && !isReview(o) && !o.done && !o._st && o.id!==l.id) : [];
-  if(dup.length){
-    withUndo("حلّت المراجعة محلّ حصة هذا اليوم", ()=>{
-      dup.forEach(o=>{
-        const b = lessons.find(x=>x.id===o.id); if(!b) return;
-        if(isRep(b)) lessons[lessons.indexOf(b)] = Object.assign({}, b, {skip:(b.skip||[]).concat(date)});
-        else lessons = lessons.filter(x=>x.id!==b.id);
+  const commit = (l, selDate)=>{
+    if(archived[student]){ delete archived[student]; saveArch(); }   // حصة جديدة لطالب مؤرشف = عاد للعمل
+    state.sel = selDate || date;
+    const d = parse(state.sel); state.cur = {y:d.getFullYear(), m:d.getMonth()};
+    closeSheet();
+    /* مراجعة في يوم فيه حصة لنفس الطالب: تحلّ المراجعة محلّ الحصة (لا تعارض ولا حصتان) —
+       الحصة المفردة تُحذف، والمتكرّرة يُتخطّى هذا اليوم فقط. المنفَّذة والملغاة والمؤجَّلة لا تُمسّ. */
+    const dup = l.kind==="review"
+      ? lessonsOn(date).filter(o=>o.student===student && !isReview(o) && !o.done && !o._st && o.id!==l.id) : [];
+    if(dup.length){
+      withUndo("حلّت المراجعة محلّ حصة هذا اليوم", ()=>{
+        dup.forEach(o=>{
+          const b = lessons.find(x=>x.id===o.id); if(!b) return;
+          if(isRep(b)) lessons[lessons.indexOf(b)] = Object.assign({}, b, {skip:(b.skip||[]).concat(date)});
+          else lessons = lessons.filter(x=>x.id!==b.id);
+        });
+        putLesson(l);
       });
-      putLesson(l);
+    } else putLesson(l);
+  };
+
+  /* حصة متكرّرة تغيّر وقتها في يوم محدّد: قد يكون التغيير لهذا اليوم فقط، فلا يُمسّ وقت السلسلة إلا بموافقة صريحة.
+     (باقي الحقول — الاسم والصف والمادة والملاحظة والتكرار — تسري على السلسلة كما كانت.) */
+  const occDs = state.occDate;
+  const occ = (old && isRep(old) && occDs) ? occOf(old, occDs) : null;
+  /* وقت هذا اليوم لم يتغيّر لكنه وقت خاص مخالف للسلسلة (النموذج مملوء به): لا يُكتب فوق وقت السلسلة */
+  if(occ && rep.t !== "none" && from === occ.from && to === occ.to){ l.from = old.from; l.to = old.to; }
+  if(occ && rep.t !== "none" && (from !== occ.from || to !== occ.to) && hits(l, occDs)){
+    const ovAll = Object.assign({}, l.ov); delete ovAll[occDs];             // «كل المواعيد»: اليوم يتبع السلسلة من جديد
+    const lAll  = Object.assign({}, l, {ov:ovAll});
+    const ovOne = Object.assign({}, l.ov);                                    // «هذا اليوم فقط»: وقت السلسلة يبقى كما هو
+    if(from === old.from && to === old.to) delete ovOne[occDs]; else ovOne[occDs] = {from, to};
+    const lOne  = Object.assign({}, l, {from:old.from, to:old.to, ov:ovOne});
+    askConfirm({
+      title:"تغيير وقت حصة متكرّرة",
+      text:"هذه الحصة تتكرّر. هل الوقت الجديد لهذا اليوم فقط، أم لكل المواعيد؟",
+      what:student+" — "+longDate(occDs)+" · "+fmtT(occ.from)+" ← "+fmtT(from),
+      ok:"هذا اليوم فقط",
+      ok2:"كل المواعيد",
+      run: ()=>commit(lOne, occDs),
+      run2: ()=>commit(lAll)
     });
-  } else putLesson(l);
+    return;
+  }
+  commit(l);
 };
 
 document.getElementById("f-del").onclick = ()=>{
@@ -2559,7 +2595,10 @@ document.getElementById("f-del").onclick = ()=>{
       ok:"حذف السلسلة كلها",
       ok2:"حذف موعد "+longDate(ds)+" فقط",
       run: ()=>withUndo("حُذفت السلسلة كلها", ()=>delLesson(id)),
-      run2: ()=>withUndo("حُذف هذا الموعد", ()=>putLesson(Object.assign({}, l, {skip:(l.skip||[]).concat(ds)})))
+      run2: ()=>withUndo("حُذف هذا الموعد", ()=>{
+        const ov = Object.assign({}, l.ov||{}); delete ov[ds];
+        putLesson(Object.assign({}, l, {skip:(l.skip||[]).concat(ds), ov}));
+      })
     });
     return;
   }

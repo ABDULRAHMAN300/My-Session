@@ -441,3 +441,112 @@ test("مراجعة فوق حصة متكرّرة: يُتخطّى ذلك اليو�
   assert.equal(on[0].kind, "review");
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== تعديل وقت حصة متكرّرة: لهذا اليوم فقط أو لكل المواعيد ===== */
+const dayAfter = (ds, n) => { const [y, m, d] = ds.split("-").map(Number); const x = new Date(y, m - 1, d + n); return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0"); };
+function addDaily(app, student, from = "16:00") {
+  const { d, t } = app;
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = student;
+  d.getElementById("f-date").value = t.today();
+  d.getElementById("f-from").value = from;
+  d.querySelector('#f-rep [data-v="daily"]').click();
+  d.getElementById("f-save").click();
+}
+function editTimeToday(app, newFrom) {
+  const { d } = app;
+  d.querySelector("[data-edit]").click();
+  d.getElementById("f-from").value = newFrom;
+  d.getElementById("f-save").click();
+}
+
+test("حصة متكرّرة: تغيير الوقت «لهذا اليوم فقط» لا يمسّ السلسلة ولا بقية الأيام", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today(), tomorrow = dayAfter(today, 1);
+  addDaily(app, "ليلى");
+  editTimeToday(app, "18:00");
+  assert.equal(d.getElementById("cscrim").hidden, false, "يُسأل المستخدم عن نطاق التغيير");
+  assert.equal(d.getElementById("c-ok").textContent, "هذا اليوم فقط");
+  d.getElementById("c-ok").click();
+  const s = t.lessons()[0];
+  assert.equal(s.from, "16:00", "وقت السلسلة كما هو");
+  assert.equal(s.to, "17:30");
+  assert.deepEqual(plain(s.ov[today]), { from: "18:00", to: "19:30" });
+  assert.equal(w.lessonsOn(today)[0].from, "18:00", "اليوم المعدَّل بوقته الجديد");
+  assert.equal(w.lessonsOn(tomorrow)[0].from, "16:00", "الغد بوقت السلسلة");
+  assert.ok(d.getElementById("main").innerHTML.includes("وقت خاص بهذا اليوم"), "شارة توضح أن الوقت خاص بهذا اليوم");
+  assert.deepEqual(app.errors, []);
+});
+
+test("حصة متكرّرة: تغيير الوقت «لكل المواعيد» يغيّر السلسلة كلها", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today(), tomorrow = dayAfter(today, 1);
+  addDaily(app, "ليلى");
+  editTimeToday(app, "18:00");
+  d.getElementById("c-ok2").click();
+  const s = t.lessons()[0];
+  assert.equal(s.from, "18:00");
+  assert.equal(s.to, "19:30");
+  assert.deepEqual(plain(s.ov), {});
+  assert.equal(w.lessonsOn(tomorrow)[0].from, "18:00");
+  assert.deepEqual(app.errors, []);
+});
+
+test("حصة متكرّرة: إلغاء سؤال النطاق يُبقي النموذج مفتوحًا ولا يحفظ شيئًا", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  addDaily(app, "ليلى");
+  editTimeToday(app, "18:00");
+  d.getElementById("c-no").click();
+  assert.equal(d.getElementById("scrim").hidden, false, "نموذج التعديل ما زال مفتوحًا");
+  assert.equal(d.getElementById("f-from").value, "18:00", "ما كتبته محفوظ في النموذج");
+  assert.equal(t.lessons()[0].from, "16:00");
+  assert.deepEqual(plain(t.lessons()[0].ov), {});
+  assert.deepEqual(app.errors, []);
+});
+
+test("حصة متكرّرة: تعديل الملاحظة فقط في يوم بوقت خاص لا يكتب وقت اليوم فوق السلسلة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today(), tomorrow = dayAfter(today, 1);
+  addDaily(app, "ليلى");
+  editTimeToday(app, "18:00");
+  d.getElementById("c-ok").click();
+  d.querySelector("[data-edit]").click();
+  assert.equal(d.getElementById("f-from").value, "18:00", "النموذج يُملأ بوقت هذا اليوم الفعلي");
+  d.getElementById("f-note").value = "ملاحظة";
+  d.getElementById("f-save").click();
+  assert.equal(d.getElementById("cscrim").hidden, true, "لا سؤال لأن الوقت لم يتغيّر");
+  const s = t.lessons()[0];
+  assert.equal(s.from, "16:00", "وقت السلسلة لم يتغيّر");
+  assert.equal(s.note, "ملاحظة");
+  assert.equal(w.lessonsOn(today)[0].from, "18:00");
+  assert.equal(w.lessonsOn(tomorrow)[0].from, "16:00");
+  assert.deepEqual(app.errors, []);
+});
+
+test("حصة متكرّرة: إرجاع الوقت إلى وقت السلسلة «لهذا اليوم» يزيل الوقت الخاص", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  addDaily(app, "ليلى");
+  editTimeToday(app, "18:00");
+  d.getElementById("c-ok").click();
+  editTimeToday(app, "16:00");
+  d.getElementById("c-ok").click();
+  assert.deepEqual(plain(t.lessons()[0].ov), {});
+  assert.equal(w.lessonsOn(today)[0].from, "16:00");
+  assert.deepEqual(app.errors, []);
+});
+
+test("حصة غير متكرّرة: تغيير الوقت يُحفظ مباشرة دون سؤال", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  addLesson(app, { student: "سالم", date: t.today(), from: "16:00" });
+  editTimeToday(app, "19:00");
+  assert.equal(d.getElementById("cscrim").hidden, true);
+  assert.equal(t.lessons()[0].from, "19:00");
+  assert.deepEqual(app.errors, []);
+});
