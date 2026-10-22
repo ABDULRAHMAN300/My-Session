@@ -1065,6 +1065,8 @@ const winTo   = () => key(addDays(new Date(),  HORIZON_FWD));
    بصرف النظر عن المدة المختارة لكل منهما (تحتاج فسحة سفر/راحة بينهما على الأقل). */
 function clashSet(list){
   const bad = new Set();
+  /* الحصة الملغاة أو المؤجَّلة لن تُعقد في وقتها، فلا تُعارض حصة أخرى وُضعت مكانها */
+  list = list.filter(l=>l._st!=="c" && l._st!=="p");
   for(let i=0;i<list.length;i++)
     for(let j=i+1;j<list.length;j++){
       const a=list[i], b=list[j];

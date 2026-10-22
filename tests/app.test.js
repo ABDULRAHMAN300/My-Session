@@ -550,3 +550,27 @@ test("حصة غير متكرّرة: تغيير الوقت يُحفظ مباشر�
   assert.equal(t.lessons()[0].from, "19:00");
   assert.deepEqual(app.errors, []);
 });
+
+test("التعارض: الحصة الملغاة أو المؤجَّلة لا تُعارض حصة وُضعت في وقتها", async () => {
+  const app = await loadApp();
+  const mk = (id, from, st) => ({ id, from, to: from, date: "2026-09-20", _st: st || null });
+  assert.equal(app.t.clashSet([mk("a", "16:00", "c"), mk("b", "16:00")]).size, 0, "ملغاة");
+  assert.equal(app.t.clashSet([mk("a", "16:00", "p"), mk("b", "16:30")]).size, 0, "مؤجَّلة");
+  assert.equal(app.t.clashSet([mk("a", "16:00"), mk("b", "16:30")]).size, 2, "حصتان فعليتان ما زالتا متعارضتين");
+});
+
+test("التعارض في الواجهة: إلغاء حصة ثم إضافة أخرى في وقتها لا يُظهر «تعارض»", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  addLesson(app, { student: "أحمد", date: today, from: "16:00" });
+  addLesson(app, { student: "سالم", date: today, from: "16:00" });
+  assert.ok(d.getElementById("main").innerHTML.includes("تعارض"), "قبل الإلغاء: تعارض");
+  const ls = t.lessons(), i = ls.findIndex(l => l.student === "أحمد");
+  ls[i] = Object.assign({}, ls[i], { stat: { [today]: "c" } });
+  w.render();
+  const html = d.getElementById("main").innerHTML;
+  assert.ok(!html.includes('class="pill clash"'), "لا شارة تعارض");
+  assert.ok(!html.includes("موعدان متداخلان"), "لا تحذير تداخل");
+  assert.deepEqual(app.errors, []);
+});
