@@ -574,3 +574,56 @@ test("التعارض في الواجهة: إلغاء حصة ثم إضافة أخ
   assert.ok(!html.includes("موعدان متداخلان"), "لا تحذير تداخل");
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== تقرير الطالب: قائمة الحصص المنفَّذة بالتاريخ + مدة يختارها المعلّم ===== */
+async function reportApp() {
+  const app = await loadApp();
+  const { w, t } = app;
+  addLesson(app, { student: "أحمد", date: "2026-10-05", from: "16:00" });
+  addLesson(app, { student: "أحمد", date: "2026-10-12", from: "17:00", dur: 60 });
+  addLesson(app, { student: "أحمد", date: "2026-11-02", from: "16:00" });
+  addLesson(app, { student: "أحمد", date: "2026-10-20", from: "16:00" });   // غير منفَّذة
+  const ls = t.lessons();
+  ls.forEach((l, i) => { if (l.date !== "2026-10-20") ls[i] = Object.assign({}, l, { done: true }); });
+  w.bumpMemo();
+  w.openReport("أحمد");
+  return app;
+}
+function setRange(app, from, to) {
+  const { d, w } = app;
+  d.querySelector('[data-rpmode="r"]').click();
+  const f = d.getElementById("rp-from"), tt = d.getElementById("rp-to");
+  f.value = from; f.dispatchEvent(new w.Event("change"));
+  tt.value = to; tt.dispatchEvent(new w.Event("change"));
+}
+
+test("تقرير الطالب: مدة مخصّصة تعرض الحصص المنفَّذة فيها فقط مرتّبة بالتاريخ", async () => {
+  const app = await reportApp();
+  const { d } = app;
+  assert.equal(d.getElementById("rp-range").hidden, true, "الوضع الشهري افتراضي");
+  setRange(app, "2026-10-01", "2026-10-31");
+  assert.equal(d.getElementById("rp-range").hidden, false);
+  const rows = [...d.querySelectorAll(".rp-done > div")];
+  assert.equal(rows.length, 2, "حصتا أكتوبر المنفَّذتان فقط");
+  assert.ok(rows[0].textContent.includes("5 أكتوبر") && rows[1].textContent.includes("12 أكتوبر"));
+  assert.ok(d.querySelector(".rp-head").textContent.includes("من 1 أكتوبر إلى 31 أكتوبر 2026"));
+  assert.ok(d.querySelector(".rp-head").textContent.includes("تقرير فترة"));
+  setRange(app, "2026-11-30", "2026-10-10");   // معكوسة: تُصحَّح تلقائيًا
+  assert.equal(d.querySelectorAll(".rp-done > div").length, 2, "12 أكتوبر و2 نوفمبر");
+  assert.deepEqual(app.errors, []);
+});
+
+test("تقرير الطالب: نص المشاركة يتضمن قائمة الحصص المنفَّذة بتواريخها", async () => {
+  const app = await reportApp();
+  const { d, w } = app;
+  setRange(app, "2026-10-01", "2026-10-31");
+  d.getElementById("rp-share").click();
+  await new Promise(r => setTimeout(r, 20));
+  const txt = w.__shares.at(-1).text;
+  assert.ok(txt.includes("الحصص المنفَّذة:"));
+  assert.ok(txt.includes("1. ") && txt.includes("5 أكتوبر") && txt.includes("12 أكتوبر"));
+  assert.ok(!txt.includes("2 نوفمبر"));
+  d.querySelector('[data-rpmode="m"]').click();
+  assert.equal(d.getElementById("rp-range").hidden, true, "العودة للوضع الشهري");
+  assert.deepEqual(app.errors, []);
+});

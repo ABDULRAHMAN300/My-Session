@@ -418,11 +418,23 @@ body{
 .rp-money .owed b{color:var(--warn)} .rp-money .clear b{color:var(--mint)}
 .rp-foot{text-align:center;font-size:11px;color:var(--ink-soft);margin-top:16px}
 .rp-actions{display:flex;gap:9px;margin-top:16px}
+.rp-range{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+.rp-range .field{margin-bottom:0}
+.rp-range input[type="date"]{min-height:46px;-webkit-appearance:none;appearance:none}
+.rp-ctrl.range .navbtn{visibility:hidden}
+.rp-done > div{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line-soft)}
+.rp-done > div:first-child{border-top:0}
+.rp-done .n{flex-shrink:0;width:22px;font-size:12px;color:var(--ink-soft);font-family:var(--font-d);text-align:center}
+.rp-done .dt{flex:1;min-width:0}
+.rp-done .dt b{font-family:var(--font-d);font-weight:600;font-size:13.5px;display:block}
+.rp-done .dt small{display:block;color:var(--ink-soft);font-size:12px}
+.rp-done .du{flex-shrink:0;font-size:12px;color:var(--ink-soft);font-family:var(--font-d)}
 body.rp-open{overflow:hidden}
 @media print{
   body.rp-open > *:not(#report){display:none!important}
   #report{position:static;overflow:visible;padding:0}
-  .rp-ctrl,.rp-actions,#rp-msg{display:none!important}
+  .rp-ctrl,.rp-actions,#rp-msg,.rp-mode,.rp-range{display:none!important}
+  .rp-done > div{break-inside:avoid}
   .card,.tile,.rp-head{break-inside:avoid;box-shadow:none}
   .rp-head{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
@@ -635,6 +647,14 @@ img,svg,canvas{max-width:100%;height:auto}
     <span class="rp-m" id="rp-m"></span>
     <button class="navbtn" id="rp-next" type="button" aria-label="الشهر التالي">‹</button>
     <button class="minibtn" id="rp-close" type="button">إغلاق</button>
+  </div>
+  <div class="seg rp-mode" role="group" aria-label="فترة التقرير">
+    <button type="button" data-rpmode="m" aria-pressed="true">شهري</button>
+    <button type="button" data-rpmode="r" aria-pressed="false">مدة أختارها</button>
+  </div>
+  <div class="rp-range" id="rp-range" hidden>
+    <div class="field"><label for="rp-from">من</label><input type="date" id="rp-from"></div>
+    <div class="field"><label for="rp-to">إلى</label><input type="date" id="rp-to"></div>
   </div>
   <div id="rp-body"></div>
   <div class="rp-actions">
@@ -2123,8 +2143,16 @@ const reportEl = document.getElementById("report");
 let rp = null;
 function reportData(){
   const {n, y, m} = rp;
-  const from = y+"-"+pad(m+1)+"-01";
-  const to   = y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
+  let from, to, label;
+  if(rp.mode === "r"){
+    from = rp.from; to = rp.to;
+    if(from > to){ const x = from; from = to; to = x; }
+    label = rangeLabel(from, to);
+  } else {
+    from = y+"-"+pad(m+1)+"-01";
+    to   = y+"-"+pad(m+1)+"-"+pad(new Date(y,m+1,0).getDate());
+    label = MONTHS[m]+" "+y;
+  }
   const occ  = expand(from, to).filter(l=>(l.student||"بدون اسم")===n);
   const done = occ.filter(l=>l.done);
   const canc = occ.filter(l=>l._st==="c");
@@ -2136,16 +2164,40 @@ function reportData(){
   const due = dueOf(n), paid = Number(money.paid[n])||0;
   const sl = studentSubjects(n).map(x=>({label:subjOf(x.subj).l, color:subjOf(x.subj).c, st:progStatKey(n, x.key)}));
   const revDone = done.filter(isReview).length;
-  return {n, label:MONTHS[m]+" "+y, done, canc, post, upcoming, minsDone, covered, revDone,
+  return {n, label, isRange: rp.mode==="r", done, canc, post, upcoming, minsDone, covered, revDone,
           due, paid, rest: due-paid, subs:sl.map(x=>x.label), g:gradeOf(meta.grade), ps:progStat(n), byS:sl};
+}
+/* «من 1 أكتوبر إلى 24 أكتوبر 2026» — تُذكر السنة مرة واحدة إن تطابقت */
+function rangeLabel(from, to){
+  const a = parse(from), b = parse(to);
+  if(from === to) return a.getDate()+" "+MONTHS[a.getMonth()]+" "+a.getFullYear();
+  const left = a.getDate()+" "+MONTHS[a.getMonth()] + (a.getFullYear()!==b.getFullYear() ? " "+a.getFullYear() : "");
+  return "من "+left+" إلى "+b.getDate()+" "+MONTHS[b.getMonth()]+" "+b.getFullYear();
+}
+function doneLine(l){
+  const d = parse(l.date);
+  return {date: DAYS[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()],
+          time: "من "+fmtT(l.from)+" إلى "+fmtT(l.to),
+          timeH: `<bdi>${fmtT(l.from)}</bdi> – <bdi>${fmtT(l.to)}</bdi>`,
+          extra: subjOf(l.subj).l + (isReview(l) ? " · مراجعة اختبار" : ""),
+          dur: durShort(durOf(l))};
+}
+function paintRpCtrl(){
+  const r = rp.mode === "r";
+  document.querySelectorAll("[data-rpmode]").forEach(b=>b.setAttribute("aria-pressed", b.dataset.rpmode===rp.mode));
+  document.getElementById("rp-range").hidden = !r;
+  document.querySelector(".rp-ctrl").classList.toggle("range", r);
+  document.getElementById("rp-from").value = rp.from;
+  document.getElementById("rp-to").value   = rp.to;
 }
 function paintReport(){
   const d = reportData();
-  document.getElementById("rp-m").textContent = d.label;
+  paintRpCtrl();
+  document.getElementById("rp-m").textContent = d.isRange ? "تقرير فترة" : d.label;
   document.getElementById("rp-msg").textContent = "";
   document.getElementById("rp-body").innerHTML = `<article class="rp">
     <header class="rp-head">
-      <span class="rp-tag">تقرير شهري</span>
+      <span class="rp-tag">${d.isRange?"تقرير فترة":"تقرير شهري"}</span>
       <h2>${esc(d.n)}</h2>
       <p>${d.g.l} · ${d.subs.join(" و")} · ${d.label}</p>
     </header>
@@ -2155,10 +2207,17 @@ function paintReport(){
       <div class="tile"><div class="v num">${d.canc.length}</div><div class="k">ملغاة</div></div>
       <div class="tile"><div class="v num">${d.post.length}</div><div class="k">مؤجَّلة</div></div>
     </div>
+    <section class="card"><h3>الحصص المنفَّذة${d.done.length?` <span class="num">(${d.done.length})</span>`:""}</h3>
+      ${d.done.length?`<div class="rp-done">${d.done.map((l,i)=>{ const x = doneLine(l); return `
+        <div><span class="n num">${i+1}</span>
+          <span class="dt"><b>${x.date}</b><small>${x.timeH} · ${esc(x.extra)}</small></span>
+          <span class="du">${x.dur}</span></div>`; }).join("")}</div>`
+        :`<p class="empty">لا حصص منفَّذة في هذه الفترة.</p>`}
+    </section>
     <section class="card"><h3>الدروس التي شُرحت</h3>
       ${d.covered.length?`<div class="rp-list">${d.covered.map(c=>`
         <div><span class="num">${shortDate(c.date)}</span><p><b>${esc(c.t)}</b></p></div>`).join("")}</div>`
-        :`<p class="empty">لم يُعلَّم أي درس في هذا الشهر.</p>`}
+        :`<p class="empty">لم يُعلَّم أي درس في ${d.isRange?"هذه الفترة":"هذا الشهر"}.</p>`}
     </section>
     ${d.ps.t?`<section class="card"><h3>التقدم في الخطة</h3>
       ${d.byS.filter(x=>x.st.t).map(x=>`<div class="plan-row" style="margin-top:0">
@@ -2171,7 +2230,7 @@ function paintReport(){
         <div><span>المدفوع</span><b class="num">${kd(d.paid)}</b></div>
         <div class="${d.rest>0.0005?"owed":"clear"}"><span>المتبقي</span><b class="num">${kd(d.rest)}</b></div>
       </div></section>`:""}
-    ${d.upcoming.length?`<p class="hint" style="margin-top:12px">متبقٍّ في هذا الشهر: <b class="num">${d.upcoming.length}</b> حصة مجدولة.</p>`:""}
+    ${d.upcoming.length?`<p class="hint" style="margin-top:12px">متبقٍّ في ${d.isRange?"هذه الفترة":"هذا الشهر"}: <b class="num">${d.upcoming.length}</b> حصة مجدولة.</p>`:""}
     <p class="rp-foot">أُعدّ في ${longDate(TODAY)} · جدول الحصص الخارجية</p>
   </article>`;
 }
@@ -2180,6 +2239,7 @@ function reportText(){
   const L = [`تقرير ${d.label} — ${d.n}`, `${d.g.l} · ${d.subs.join(" و")}`, ""];
   L.push(`الحصص المنفَّذة: ${d.done.length}${d.minsDone?` (${durShort(d.minsDone)})`:""}`);
   if(d.revDone) L.push(`منها مراجعة اختبار: ${d.revDone}`);
+  if(d.done.length){ L.push("", "الحصص المنفَّذة:"); d.done.forEach((l,i)=>{ const x = doneLine(l); L.push(`${i+1}. ${x.date} · ${x.time} · ${x.extra} (${x.dur})`); }); }
   if(d.canc.length) L.push(`الملغاة: ${d.canc.length}`);
   if(d.post.length) L.push(`المؤجَّلة: ${d.post.length}`);
   if(d.covered.length){ L.push("", "الدروس التي شُرحت:"); d.covered.forEach(c=>L.push(`• ${shortDate(c.date)}: ${c.t}`)); }
@@ -2189,7 +2249,7 @@ function reportText(){
 }
 function openReport(n){
   const t = new Date();
-  rp = {n, y:t.getFullYear(), m:t.getMonth()};
+  rp = {n, y:t.getFullYear(), m:t.getMonth(), mode:"m", from:key(new Date(t.getFullYear(), t.getMonth(), 1)), to:TODAY};
   paintReport();
   reportEl.hidden = false;
   reportEl.scrollTop = 0;
@@ -2199,11 +2259,17 @@ function closeReport(){ reportEl.hidden = true; document.body.classList.remove("
 document.getElementById("rp-close").onclick = closeReport;
 document.getElementById("rp-prev").onclick = ()=>{ rp.m--; if(rp.m<0){ rp.m=11; rp.y--; } paintReport(); };
 document.getElementById("rp-next").onclick = ()=>{ rp.m++; if(rp.m>11){ rp.m=0; rp.y++; } paintReport(); };
+document.querySelectorAll("[data-rpmode]").forEach(b=>b.onclick=()=>{ if(!rp) return; rp.mode = b.dataset.rpmode; paintReport(); });
+["rp-from","rp-to"].forEach(id=>document.getElementById(id).addEventListener("change", e=>{
+  if(!rp || !e.target.value) return;
+  rp[id==="rp-from" ? "from" : "to"] = e.target.value;
+  paintReport();
+}));
 document.getElementById("rp-printbtn").onclick = ()=>{ try{ window.print(); }catch(e){} };
 document.getElementById("rp-share").onclick = async ()=>{
   const text = reportText(), msg = document.getElementById("rp-msg");
   try{
-    if(navigator.share){ await navigator.share({title:"التقرير الشهري", text}); return; }
+    if(navigator.share){ await navigator.share({title: rp && rp.mode==="r" ? "تقرير فترة" : "التقرير الشهري", text}); return; }
     await navigator.clipboard.writeText(text);
     msg.textContent = "نُسخ التقرير. الصقه في واتساب أو أي تطبيق.";
   }catch(e){
