@@ -515,7 +515,14 @@ img,svg,canvas{max-width:100%;height:auto}
   font-size:12.5px;font-family:var(--font-d);color:var(--violet)}
 .minibtn.solid{background:var(--grad);color:var(--on-violet);border-color:transparent}
 .minibtn.rev{color:var(--rev);border-color:color-mix(in srgb,var(--rev) 40%,var(--line))}
-.stu-acts{margin-top:10px}
+.stu-acts{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+.pill.pkg{background:color-mix(in srgb,var(--chem) 14%,transparent);color:var(--chem)}
+.pill.pkg.low{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.dayacts{display:flex;justify-content:flex-end;margin:0 0 10px}
+.alertcard{border-inline-start:4px solid var(--warn)}
+.alertcard p{margin:4px 0 0;font-size:13px;line-height:1.8}
+.wmeta{font-size:12.5px;color:var(--ink-soft);margin-top:8px;line-height:1.8}
+.wmeta a{color:var(--violet);font-family:var(--font-d)}
 .paylist{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
 .paylist div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);padding:3px 0}
 .paylist b{font-family:var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums}
@@ -685,6 +692,42 @@ img,svg,canvas{max-width:100%;height:auto}
   </div>
 </div>
 
+<div class="scrim" id="wscrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="wtitle">
+    <div class="grab"></div>
+    <h2 id="wtitle">طالب في قائمة الانتظار</h2>
+    <div class="field">
+      <label for="w-name">اسم الطالب</label>
+      <input type="text" id="w-name" placeholder="مثال: محمد العنزي" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="w-grade">الصف</label>
+      <div class="opts" id="w-grade"></div>
+    </div>
+    <div class="field">
+      <label for="w-subj">المادة</label>
+      <div class="opts" id="w-subj"></div>
+    </div>
+    <div class="field">
+      <label for="w-when">الأوقات التي يطلبها</label>
+      <input type="text" id="w-when" placeholder="مثال: الأحد والثلاثاء بعد الخامسة" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="w-phone">رقم التواصل</label>
+      <input type="tel" id="w-phone" inputmode="tel" dir="ltr" placeholder="اختياري" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="w-note">ملاحظة</label>
+      <textarea id="w-note" placeholder="اختياري"></textarea>
+    </div>
+    <p id="w-msg" hidden style="font-size:12.5px;color:var(--warn);margin:0 0 4px;line-height:1.6"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" id="w-save" type="button">حفظ</button>
+      <button class="btn ghost" id="w-cancel" type="button">إلغاء</button>
+    </div>
+  </div>
+</div>
+
 <div id="lock" hidden role="dialog" aria-modal="true" aria-labelledby="lk-title">
   <div class="lk-box">
     <h2 id="lk-title">التطبيق مقفل</h2>
@@ -812,7 +855,7 @@ function shortDate(s){ const d = parse(s); return d.getDate() + " " + MONTHS[d.g
    (cloudPush تستدعي undoStale) كي لا يُلغي التراجع تعديلًا أحدث منه. */
 const undoBar = document.getElementById("undobar");
 let _undo = null;
-function snapState(){ return JSON.stringify({lessons, lib, prog, money, archived}); }
+function snapState(){ return JSON.stringify({lessons, lib, prog, money, archived, extra}); }
 function undoStale(){
   if(!_undo) return;
   clearTimeout(_undo.timer); _undo = null;
@@ -823,8 +866,8 @@ function undoNow(){
   undoStale();
   const o = JSON.parse(u.snap);
   lessons = o.lessons||[]; lib = o.lib||{}; prog = o.prog||{};
-  money = o.money||{due:{}, paid:{}, pays:[]}; archived = o.archived||{};
-  save(); saveLib(); saveProg(); saveMoney(); saveArch();
+  money = o.money||{due:{}, paid:{}, pays:[]}; archived = o.archived||{}; extra = normExtra(o.extra);
+  save(); saveLib(); saveProg(); saveMoney(); saveArch(); saveExtra();
   render();
   if(!lscrim.hidden) paintPlan();     // نافذة الخطة مفتوحة: أعد رسمها بالقائمة المستعادة
 }
@@ -905,6 +948,19 @@ function loadMoney(){
 }
 function saveMoney(){ try{ localStorage.setItem(MONEY_LS, JSON.stringify(money)); }catch(e){} cloudPush(); }
 
+/* بيانات إضافية: باقات الحصص وقائمة الانتظار
+   pkgs: {اسم: [{id, n, from}]} — كل تجديد يضيف باقة، والرصيد تراكمي (الزائد أو الناقص ينتقل للباقة التالية)
+   wait: [{id, name, grade, subj, when, phone, note, ts}] */
+const EXTRA_LS = "hisas_extra_v1";
+let extra = {pkgs:{}, wait:[]};
+function normExtra(x){
+  x = (x && typeof x === "object") ? x : {};
+  return {pkgs:(x.pkgs && typeof x.pkgs === "object") ? x.pkgs : {}, wait:Array.isArray(x.wait) ? x.wait : []};
+}
+function loadExtra(){ try{ extra = normExtra(JSON.parse(localStorage.getItem(EXTRA_LS)||"null")); }catch(e){ extra = normExtra(null); } }
+function saveExtra(){ try{ localStorage.setItem(EXTRA_LS, JSON.stringify(extra)); }catch(e){} cloudPush(); }
+const newId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
 /* سجل الدفعات: كل دفعة بمبلغها وتاريخها، والإجمالي في money.paid يبقى مصدر «المتبقي» */
 function paysOf(n){ return money.pays.filter(p=>p.student===n).sort((a,b)=>b.date.localeCompare(a.date)); }
 function addPayment(n, amt, ds){
@@ -962,6 +1018,11 @@ function renameStudent(oldName, newName){
   mergeMoney(oldName, newName);
   saveMoney();
   if(archived[oldName]){ delete archived[oldName]; archived[newName] = true; saveArch(); }
+  if(extra.pkgs[oldName]){
+    extra.pkgs[newName] = (extra.pkgs[newName]||[]).concat(extra.pkgs[oldName]).sort((a,b)=>(a.from||"").localeCompare(b.from||""));
+    delete extra.pkgs[oldName];
+    saveExtra();
+  }
   render();
 }
 /* كل المواد التي يدرسها الطالب، الأحدث أولًا */
@@ -1006,6 +1067,45 @@ function doneCount(n){ return doneUpToToday().filter(l=>(l.student||"بدون ا
 const isFeeRev = l => isReview(l) && l.bill === "fee" && Number(l.fee) > 0;
 function revFee(n){ return doneUpToToday().filter(l=>(l.student||"بدون اسم")===n && isFeeRev(l)).reduce((t,l)=>t+Number(l.fee),0); }
 const dueOf = n => (Number(money.due[n])||0) + revFee(n);
+/* الباقات: الحصص المنفَّذة منذ بداية أول باقة تُخصم من مجموع الباقات بالترتيب.
+   المراجعة «بمبلغ على الحساب» لا تُخصم (لها مبلغها)، والملغاة والمؤجَّلة لا تُخصم. */
+function pkgStat(n){
+  const a = extra.pkgs[n];
+  if(!a || !a.length) return null;
+  const from = a.reduce((m,p)=>p.from<m ? p.from : m, a[0].from);
+  const total = a.reduce((t,p)=>t+(Number(p.n)||0), 0);
+  const used = doneUpToToday().filter(l=>(l.student||"بدون اسم")===n && l.date>=from && !isFeeRev(l)).length;
+  return {total, used, left: total-used, last: a[a.length-1], count: a.length};
+}
+function pkgPill(n){
+  const st = pkgStat(n);
+  if(!st) return "";
+  const t = st.left > 1 ? `الباقة: متبقٍ ${st.left} من ${st.total}`
+          : st.left === 1 ? "الباقة: متبقية حصة واحدة"
+          : st.left === 0 ? "انتهت الباقة"
+          : `انتهت الباقة · تجاوز ${-st.left}`;
+  return `<span class="pill pkg${st.left<=1?" low":""}">${t}</span>`;
+}
+/* طلاب يحتاجون تجديد باقة (حصة واحدة أو أقل)، دون المؤرشفين */
+const pkgDue = () => Object.keys(extra.pkgs).filter(n=>!archived[n] && (pkgStat(n)||{left:2}).left <= 1);
+function addPkg(n){
+  const st = pkgStat(n), last = st ? st.last.n : "";
+  askInput({title: st ? `تجديد باقة ${n}` : `باقة جديدة لـ ${n}`,
+    text: st ? "عدد حصص الباقة الجديدة. يُضاف إلى الرصيد الحالي (الزائد أو الناقص ينتقل معه)."
+             : "عدد حصص الباقة. تبدأ من اليوم. إن كان الطالب بدأ باقته سابقًا فاكتب عدد الحصص المتبقية له.",
+    value: String(last || 8), ok: "حفظ الباقة",
+    validate: v => /^[0-9]{1,3}$/.test(v) && +v > 0 ? null : "اكتب عددًا صحيحًا أكبر من صفر."
+  }).then(v=>{
+    if(v===null) return;
+    (extra.pkgs[n] ||= []).push({id:newId("k"), n:+v, from:TODAY});
+    saveExtra(); render();
+  });
+}
+function endPkg(n){
+  askConfirm({title:"إنهاء الباقة", text:`يتوقف عدّاد الباقة لـ ${n}. لا تُحذف أي حصة أو دفعة.`,
+    ok:"إنهاء الباقة", run: ()=>withUndo("أُنهيت الباقة", ()=>{ delete extra.pkgs[n]; saveExtra(); render(); })});
+}
+
 /* المراجعة تُحتسب حصة كاملة؛ هذه الدالة تفصلها للعرض فقط */
 function doneSplit(n){
   const ls = doneUpToToday().filter(l=>(l.student||"بدون اسم")===n);
@@ -1180,6 +1280,25 @@ function lessonRow(l, clashes){
   </div>`;
 }
 
+/* إلغاء يوم كامل (عطلة أو مرض): كل حصة لم تُنفَّذ ولم تُعلَّم بعد تصبح «ملغاة» — تبقى ظاهرة وتُحسب في التقرير */
+const cancellable = ds => lessonsOn(ds).filter(o=>!o.done && !o._st);
+function cancelDay(ds){
+  cancellable(ds).forEach(o=>{
+    const i = lessons.findIndex(x=>x.id===o.id); if(i<0) return;
+    const l = lessons[i];
+    lessons[i] = Object.assign({}, l, {stat:Object.assign({}, l.stat||{}, {[ds]:"c"})});
+  });
+  save(); render();
+}
+function askCancelDay(ds){
+  const list = cancellable(ds);
+  if(!list.length) return;
+  askConfirm({title:"إلغاء حصص " + longDate(ds),
+    text:`ستُعلَّم ${list.length===1?"حصة واحدة":list.length===2?"حصتان":list.length<=10?list.length+" حصص":list.length+" حصة"} «ملغاة». تبقى ظاهرة وتُحسب في التقرير ضمن الملغاة، ولا تُخصم من الباقات. الحصص المنفَّذة لا تُمسّ.`,
+    what: list.map(l=>`${l.student||"بدون اسم"} · ${fmtT(l.from)}`).join("، "),
+    ok:"إلغاء الحصص", run: ()=>withUndo("أُلغيت حصص اليوم", ()=>cancelDay(ds))});
+}
+
 function dayPanel(ds){
   const list = lessonsOn(ds), clashes = clashSet(list);
   const total = list.reduce((s,l)=>s+durOf(l),0);
@@ -1192,6 +1311,7 @@ function dayPanel(ds){
       <button class="addbtn" type="button" data-add="${ds}">+ حصة</button>
     </div>
     <div class="panel-body">
+      ${list.some(o=>!o.done && !o._st)?`<div class="dayacts"><button class="minibtn" type="button" data-cancelday="${ds}">إلغاء كل حصص اليوم</button></div>`:""}
       ${clashes.size?`<div class="warnbox">⚠ يوجد موعدان متداخلان في هذا اليوم — راجع الأوقات.</div>`:""}
       ${list.length?list.map(l=>lessonRow(l,clashes)).join(""):`<p class="empty">اليوم فارغ — اضغط «+ حصة» لإضافة موعد.</p>`}
     </div>
@@ -1239,6 +1359,7 @@ function renderCal(){
           <span class="dw">${DAYS[d.getDay()]} · ${MONTHS[d.getMonth()]}</span>
           <button class="mini" type="button" data-add="${ds}">+ حصة</button>
         </div>
+        ${list.some(o=>!o.done && !o._st)?`<div class="dayacts" style="margin:8px 0 0"><button class="minibtn" type="button" data-cancelday="${ds}">إلغاء اليوم</button></div>`:""}
         ${clashes.size?`<div class="warnbox" style="margin-top:8px">⚠ موعدان متداخلان.</div>`:""}
         ${list.length?list.map(l=>lessonRow(l,clashes)).join(""):`<p style="font-size:12.5px;color:var(--ink-soft);margin:4px 0 0">لا حصص.</p>`}
       </div>`;
@@ -1251,6 +1372,7 @@ function renderCal(){
   if(n) n.onclick=()=>{ const i=state.cur.y*12+state.cur.m+1; state.cur={y:Math.floor(i/12),m:i%12}; render(); };
   main.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ state.mode=b.dataset.mode; render(); });
   main.querySelectorAll(".cell[data-date]").forEach(b=>b.onclick=()=>{ state.sel=b.dataset.date; render(); });
+  main.querySelectorAll("[data-cancelday]").forEach(b=>b.onclick=()=>askCancelDay(b.dataset.cancelday));
   wire();
 }
 
@@ -1294,7 +1416,36 @@ function renderStudents(){
   all.forEach(l=>{ (byStu[l.student||"بدون اسم"] ||= []).push(l); });
   const names = Object.keys(byStu).sort((a,b)=>byStu[b].length-byStu[a].length);
 
-  let html = searchBox() + `<div class="chips" role="group" aria-label="تصفية حسب المادة">
+  const wq = extra.wait.filter(w=>matchesQ(w.name||""));
+  let html = searchBox();
+  const due = pkgDue();
+  if(due.length) html += `<div class="card alertcard"><h3>باقات تحتاج تجديدًا</h3>
+    <p>${due.map(n=>`<b>${esc(n)}</b> (${(s=>s.left===1?"متبقية حصة":s.left===0?"انتهت":"تجاوز "+(-s.left))(pkgStat(n))})`).join("، ")}</p></div>`;
+  html += `<div class="chips" style="margin-bottom:12px">
+    <button class="chip" type="button" id="wait-toggle" aria-pressed="${!!state.showWait}">⏳ قائمة الانتظار (${extra.wait.length})</button>
+    <button class="chip" type="button" id="wait-add">+ طالب منتظر</button>
+  </div>`;
+  if(state.showWait){
+    html += wq.length ? wq.map(w=>`<div class="card">
+        <div class="stu-h">
+          <span class="avatar" style="background:${gradeOf(w.grade).c}">${gradeOf(w.grade).s}</span>
+          <span class="who"><b>${esc(w.name)}</b><span>${gradeOf(w.grade).l} · ${subjOf(w.subj).l}</span></span>
+        </div>
+        <div class="wmeta">
+          ${w.when?`الأوقات: <b>${esc(w.when)}</b><br>`:""}
+          ${w.phone?`التواصل: <a href="tel:${esc(w.phone.replace(/[^0-9+]/g,""))}" dir="ltr">${esc(w.phone)}</a><br>`:""}
+          ${w.note?esc(w.note)+"<br>":""}
+          أُضيف في ${shortDate(w.day||TODAY)}
+        </div>
+        <div class="stu-acts">
+          <button class="minibtn solid" type="button" data-wsched="${w.id}">جدولة حصة</button>
+          <button class="minibtn" type="button" data-wedit="${w.id}">تعديل</button>
+          <button class="minibtn" type="button" data-wdel="${w.id}">حذف</button>
+        </div>
+      </div>`).join("")
+      : `<div class="card"><p class="empty">${extra.wait.length?"لا أحد في الانتظار بهذا الاسم.":"قائمة الانتظار فارغة."}</p></div>`;
+  }
+  html += `<div class="chips" role="group" aria-label="تصفية حسب المادة">
     <button class="chip" type="button" data-sf="all" aria-pressed="${state.subjFilter==="all"}">كل المواد</button>
     ${SUBJECTS.map(s=>`<button class="chip" type="button" data-sf="${s.v}" aria-pressed="${state.subjFilter===s.v}"><i style="background:${s.c}"></i>${s.l}</button>`).join("")}
   </div>`;
@@ -1330,8 +1481,13 @@ function renderStudents(){
             ? `القادمة: <b>${longDate(next.date)}</b> · <b class="num">${fmtT(next.from)}</b> — ${fmtT(next.to)}${isReview(next)?` · <b>مراجعة اختبار</b>`:""}`
             : `لا حصص قادمة مجدولة.`}
           <br>مجموع الوقت المجدول: <b>${durLabel(totalMin)}</b>
+          ${pkgPill(n)?`<br>${pkgPill(n)}`:""}
         </div>
-        ${isArch?"":`<div class="stu-acts"><button class="minibtn rev" type="button" data-rev="${esc(n)}">+ موعد مراجعة اختبار</button></div>`}
+        ${isArch?"":`<div class="stu-acts">
+          <button class="minibtn rev" type="button" data-rev="${esc(n)}">+ موعد مراجعة اختبار</button>
+          <button class="minibtn" type="button" data-pkg="${esc(n)}">${extra.pkgs[n]?"تجديد الباقة":"+ باقة حصص"}</button>
+          ${extra.pkgs[n]?`<button class="minibtn" type="button" data-pkgend="${esc(n)}">إنهاء الباقة</button>`:""}
+        </div>`}
       </div>`;
     });
   }
@@ -1344,6 +1500,17 @@ function renderStudents(){
     saveArch(); render();
   });
   main.querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>openReviewFor(b.dataset.rev));
+  main.querySelectorAll("[data-pkg]").forEach(b=>b.onclick=()=>addPkg(b.dataset.pkg));
+  main.querySelectorAll("[data-pkgend]").forEach(b=>b.onclick=()=>endPkg(b.dataset.pkgend));
+  document.getElementById("wait-toggle").onclick = ()=>{ state.showWait = !state.showWait; render(); };
+  document.getElementById("wait-add").onclick = ()=>openWait(null);
+  main.querySelectorAll("[data-wedit]").forEach(b=>b.onclick=()=>openWait(extra.wait.find(w=>w.id===b.dataset.wedit)));
+  main.querySelectorAll("[data-wsched]").forEach(b=>b.onclick=()=>scheduleWait(b.dataset.wsched));
+  main.querySelectorAll("[data-wdel]").forEach(b=>b.onclick=()=>{
+    const w = extra.wait.find(x=>x.id===b.dataset.wdel); if(!w) return;
+    askConfirm({title:"حذف من قائمة الانتظار", text:"يُحذف هذا الطالب من قائمة الانتظار.", what:w.name, ok:"حذف",
+      run: ()=>withUndo("حُذف من قائمة الانتظار", ()=>{ extra.wait = extra.wait.filter(x=>x.id!==w.id); saveExtra(); render(); })});
+  });
   main.querySelectorAll("[data-rename]").forEach(b=>b.onclick=()=>{
     const old = b.dataset.rename;
     askInput({title:"إعادة تسمية الطالب", text:"تنتقل معه كل حصصه وخطته وحساباته.", value:old, ok:"حفظ الاسم",
@@ -1399,6 +1566,7 @@ function renderPay(){
         <label>المدفوع<input type="number" inputmode="decimal" min="0" step="0.5" data-paid="${esc(n)}" value="${money.paid[n]!==undefined?money.paid[n]:""}" placeholder="0"></label>
         <div class="rest ${hasDue?(cleared?"clear":"owed"):""}"><span>المتبقي</span><b class="num">${hasDue?kd(r):"—"}</b></div>
       </div>
+      ${pkgPill(n)?`<p style="margin:8px 0 0">${pkgPill(n)}</p>`:""}
       ${fee>0?`<p class="hint" style="margin:8px 0 0;text-align:start">المستحق أعلاه <b class="num">${kd(due)}</b> يشمل <b class="num">${kd(fee)}</b> د.ك من مراجعات اختبار.</p>`:""}
       <div class="pay-row">
         <label>دفعة جديدة<input type="number" inputmode="decimal" min="0" step="0.5" data-newpay placeholder="0"></label>
@@ -1624,7 +1792,7 @@ function renderStats(){
 
 /* ---------- التصدير والاستيراد ---------- */
 function backupBlob(){
-  return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money, archived }, null, 1);
+  return JSON.stringify({ app:"hisas", v:3, at:new Date().toISOString(), lessons, lib, prog, money, archived, extra }, null, 1);
 }
 
 /* ---------- النسخ الاحتياطي السحابي (Supabase) ----------
@@ -1845,6 +2013,7 @@ function doImport(data, replace, undoable){
     prog  = (data.prog && typeof data.prog==="object") ? data.prog : {};
     money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[]} : {due:{}, paid:{}, pays:[]};
     archived = (data.archived && typeof data.archived==="object") ? data.archived : {};
+    extra = normExtra(data.extra);
     addedCount = lessons.length;
   }else{
     const have = new Set(lessons.map(l=>l.id));
@@ -1863,6 +2032,17 @@ function doImport(data, replace, undoable){
       Object.keys(data.prog).forEach(n=>{ prog[n] = Object.assign({}, data.prog[n], prog[n]||{}); });
     }
     if(data.archived && typeof data.archived === "object"){ archived = Object.assign({}, data.archived, archived); }
+    if(data.extra){
+      const inc2 = normExtra(data.extra);
+      Object.keys(inc2.pkgs).forEach(n=>{
+        const cur = extra.pkgs[n] || [], ids = new Set(cur.map(x=>x.id));
+        (inc2.pkgs[n]||[]).forEach(x=>{ if(x && x.id && !ids.has(x.id)) cur.push(x); });
+        cur.sort((a,b)=>(a.from||"").localeCompare(b.from||""));
+        extra.pkgs[n] = cur;
+      });
+      const wids = new Set(extra.wait.map(w=>w.id));
+      inc2.wait.forEach(w=>{ if(w && w.id && !wids.has(w.id)) extra.wait.push(w); });
+    }
     if(data.money){
       money.due = Object.assign({}, data.money.due||{}, money.due);
       money.paid = Object.assign({}, data.money.paid||{}, money.paid);
@@ -1872,7 +2052,7 @@ function doImport(data, replace, undoable){
       }
     }
   }
-  save(); saveLib(); saveProg(); saveMoney(); saveArch();
+  save(); saveLib(); saveProg(); saveMoney(); saveArch(); saveExtra();
   if(msg) msg.textContent = replace
     ? "تم الاستبدال الكامل — " + addedCount + " حصة."
     : "تم دمج " + addedCount + " حصة جديدة، مع الخطة والحسابات.";
@@ -2562,12 +2742,64 @@ function openReviewFor(name){
 }
 document.getElementById("f-student").addEventListener("change", prefillFromLast);
 document.getElementById("f-student").addEventListener("input", e=>{ if(e.inputType==="insertReplacementText") prefillFromLast(); });
-function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; }
+function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; state.fromWait=null; }
+
+/* ============ قائمة الانتظار ============ */
+const wscrim = document.getElementById("wscrim");
+let wdraft = null;
+function paintWait(){
+  optButtons(document.getElementById("w-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), wdraft.grade,
+    v=>{ wdraft.grade=v; if(!subjAllowed(wdraft.subj, v)) wdraft.subj="chem"; paintWait(); });
+  optButtons(document.getElementById("w-subj"),
+    SUBJECTS.filter(x=>subjAllowed(x.v, wdraft.grade)).map(x=>({v:x.v,l:x.l,dot:x.c})), wdraft.subj,
+    v=>{ wdraft.subj=v; paintWait(); });
+}
+function openWait(w){
+  wdraft = {id: w ? w.id : null, grade: w ? w.grade : "10", subj: w ? w.subj : "chem"};
+  document.getElementById("wtitle").textContent = w ? "تعديل طالب منتظر" : "طالب في قائمة الانتظار";
+  document.getElementById("w-name").value  = w ? (w.name||"") : "";
+  document.getElementById("w-when").value  = w ? (w.when||"") : "";
+  document.getElementById("w-phone").value = w ? (w.phone||"") : "";
+  document.getElementById("w-note").value  = w ? (w.note||"") : "";
+  document.getElementById("w-msg").hidden = true;
+  paintWait();
+  wscrim.hidden = false;
+  setTimeout(()=>document.getElementById("w-name").focus(), 50);
+}
+function closeWait(){ wscrim.hidden = true; wdraft = null; }
+document.getElementById("w-cancel").onclick = closeWait;
+wscrim.onclick = e => { if(e.target===wscrim) closeWait(); };
+document.getElementById("w-save").onclick = ()=>{
+  const name = document.getElementById("w-name").value.trim();
+  const m = document.getElementById("w-msg");
+  if(!name){ m.textContent = "اكتب اسم الطالب."; m.hidden = false; document.getElementById("w-name").focus(); return; }
+  const old = wdraft.id ? extra.wait.find(x=>x.id===wdraft.id) : null;
+  const w = {id: old ? old.id : newId("w"), name, grade: wdraft.grade, subj: wdraft.subj,
+    when: document.getElementById("w-when").value.trim(),
+    phone: document.getElementById("w-phone").value.trim(),
+    note: document.getElementById("w-note").value.trim(),
+    day: old ? (old.day||TODAY) : TODAY, ts: old ? (old.ts||Date.now()) : Date.now()};
+  if(old) extra.wait[extra.wait.indexOf(old)] = w; else extra.wait.push(w);
+  closeWait();
+  state.showWait = true;
+  saveExtra(); render();
+};
+/* جدولة طالب منتظر: نافذة حصة جديدة مملوءة باسمه وصفّه ومادته؛ يخرج من القائمة بعد حفظ الحصة فقط */
+function scheduleWait(id){
+  const w = extra.wait.find(x=>x.id===id); if(!w) return;
+  openSheet(null, state.sel);
+  document.getElementById("f-student").value = w.name;
+  draft.grade = w.grade || draft.grade;
+  draft.subj  = subjAllowed(w.subj, draft.grade) ? (w.subj || draft.subj) : "chem";
+  if(w.phone && !document.getElementById("f-note").value) document.getElementById("f-note").value = "رقم التواصل: " + w.phone;
+  paintOpts();
+  state.fromWait = id;
+}
 document.getElementById("f-cancel").onclick = closeSheet;
 scrim.onclick = e => { if(e.target===scrim) closeSheet(); };
 document.addEventListener("keydown", e=>{
   if(e.key!=="Escape") return;
-  if(!iscrim.hidden) closeInput(null); else if(!cscrim.hidden) closeConfirm(); else if(!scrim.hidden) closeSheet();
+  if(!iscrim.hidden) closeInput(null); else if(!cscrim.hidden) closeConfirm(); else if(!wscrim.hidden) closeWait(); else if(!scrim.hidden) closeSheet();
 });
 
 document.getElementById("f-save").onclick = ()=>{
@@ -2604,6 +2836,7 @@ document.getElementById("f-save").onclick = ()=>{
     ts: old ? (old.ts||Date.now()) : Date.now()
   };
   const commit = (l, selDate)=>{
+    const fw = state.fromWait;
     if(archived[student]){ delete archived[student]; saveArch(); }   // حصة جديدة لطالب مؤرشف = عاد للعمل
     state.sel = selDate || date;
     const d = parse(state.sel); state.cur = {y:d.getFullYear(), m:d.getMonth()};
@@ -2622,6 +2855,7 @@ document.getElementById("f-save").onclick = ()=>{
         putLesson(l);
       });
     } else putLesson(l);
+    if(fw && extra.wait.some(w=>w.id===fw)){ extra.wait = extra.wait.filter(w=>w.id!==fw); saveExtra(); render(); }
   };
 
   /* حصة متكرّرة تغيّر وقتها في يوم محدّد: قد يكون التغيير لهذا اليوم فقط، فلا يُمسّ وقت السلسلة إلا بموافقة صريحة.
@@ -2720,7 +2954,8 @@ function checkPin(p){
 const lockEl = document.getElementById("lock");
 let pinPad = null;
 function setInert(on){
-  [...document.body.children].forEach(el=>{ if(el!==lockEl && el.tagName!=="SCRIPT") el.inert = on; });
+  /* السمة inert (لا الخاصية): تعمل في المتصفحات وفي jsdom الذي لا يدعم الخاصية */
+  [...document.body.children].forEach(el=>{ if(el!==lockEl && el.tagName!=="SCRIPT") el.toggleAttribute("inert", on); });
 }
 function paintPad(){
   document.querySelectorAll("#lk-dots i").forEach((d,i)=>d.classList.toggle("on", !!pinPad && i<pinPad.buf.length));
@@ -2802,6 +3037,7 @@ load();
 loadLib();
 loadMoney();
 loadArch();
+loadExtra();
 render();
 cloudPush(); // نسخة سحابية أولى فور الفتح، حتى دون أي تعديل جديد
 
