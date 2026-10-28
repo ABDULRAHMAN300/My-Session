@@ -168,6 +168,7 @@ test("مراجعة الاختبار: موعد واحد لا يتكرّر ويُ�
   const { d, t, w } = app;
   const today = t.today();
   addLesson(app, { student: "أحمد", date: today, from: "10:00", dur: 60 });          // حصة عادية
+  d.querySelector("[data-toggle]").click();            // نُفِّذت قبل إضافة المراجعة، فلا تحلّ المراجعة محلّها
   d.querySelector("[data-add]").click();
   d.querySelector('#f-kind [data-v="review"]').click();
   assert.equal(d.getElementById("f-rep").closest(".field").hidden, true, "التكرار مخفي للمراجعة");
@@ -179,7 +180,7 @@ test("مراجعة الاختبار: موعد واحد لا يتكرّر ويُ�
   const rev = t.lessons().find(l => l.kind === "review");
   assert.ok(rev && rev.rep.t === "none" && rev.student === "أحمد");
 
-  d.querySelectorAll("[data-toggle]").forEach(b => b.click());                        // نفّذ الاثنتين
+  d.querySelectorAll(".les:not(.done) [data-toggle]").forEach(b => b.click());        // نفّذ المراجعة أيضًا
   assert.equal(t.lessons().filter(l => l.done).length, 2);
   t.setTab("pay"); w.render();
   const cnt = d.querySelector(".stu-card .cnt").textContent;
@@ -625,5 +626,123 @@ test("تقرير الطالب: نص المشاركة يتضمن قائمة ال�
   assert.ok(!txt.includes("2 نوفمبر"));
   d.querySelector('[data-rpmode="m"]').click();
   assert.equal(d.getElementById("rp-range").hidden, true, "العودة للوضع الشهري");
+  assert.deepEqual(app.errors, []);
+});
+
+/* تنفيذ كل حصص اليوم المعروض في التقويم (مرة لكل حصة، مع إغلاق نافذة «بعد الحصة» إن ظهرت) */
+function doneAll(app) {
+  const { d, t, w } = app;
+  t.setTab("cal"); w.render();
+  const keys = [...new Set([...d.querySelectorAll(".les:not(.done) [data-toggle]")].map(b => b.dataset.toggle))];
+  keys.forEach(k => {
+    const b = d.querySelector(`.les:not(.done) [data-toggle="${k}"]`);
+    if (b) b.click();
+    if (!d.getElementById("gscrim").hidden) d.getElementById("g-later").click();
+  });
+}
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+test("باقات الحصص: عدّاد تراكمي، تنبيه عند حصة واحدة، والمراجعة بمبلغ لا تُخصم", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  const pill = () => { t.setTab("stu"); w.render(); const p = d.querySelector(".pill.pkg"); return p ? p.textContent : ""; };
+  addLesson(app, { student: "أحمد", date: today, from: "08:00" });
+  t.setTab("stu"); w.render();
+  d.querySelector('[data-pkg="أحمد"]').click();
+  answerInput(app, "2"); await tick();
+  assert.equal(pill(), "الباقة: متبقٍ 2 من 2", "حصة غير منفَّذة لا تُخصم");
+
+  doneAll(app);
+  assert.equal(pill(), "الباقة: متبقية حصة واحدة");
+  assert.ok(d.querySelector(".alertcard").textContent.includes("أحمد"), "تنبيه التجديد ظاهر");
+
+  t.setTab("cal"); w.render();
+  d.querySelector("[data-add]").click();                                  // مراجعة بمبلغ على الحساب
+  d.querySelector('#f-kind [data-v="review"]').click();
+  d.querySelector('#f-bill [data-v="fee"]').click();
+  d.getElementById("f-student").value = "أحمد";
+  d.getElementById("f-date").value = today;
+  d.getElementById("f-from").value = "11:00";
+  d.getElementById("f-fee").value = "5";
+  d.getElementById("f-save").click();
+  doneAll(app);
+  assert.equal(pill(), "الباقة: متبقية حصة واحدة", "المراجعة بمبلغ لا تُخصم من الباقة");
+
+  t.setTab("cal"); w.render();
+  addLesson(app, { student: "أحمد", date: today, from: "14:00" });
+  addLesson(app, { student: "أحمد", date: today, from: "17:00" });
+  doneAll(app);
+  assert.equal(pill(), "انتهت الباقة · تجاوز 1");
+
+  d.querySelector('[data-pkg="أحمد"]').click();                          // تجديد: الرصيد ينتقل
+  answerInput(app, "4"); await tick();
+  assert.equal(pill(), "الباقة: متبقٍ 3 من 6");
+  assert.equal(d.querySelector(".alertcard"), null);
+
+  w.renameStudent("أحمد", "أحمد علي");
+  assert.equal(t.extra().pkgs["أحمد"], undefined);
+  assert.equal(t.extra().pkgs["أحمد علي"].length, 2, "الباقات تنتقل مع إعادة التسمية");
+  assert.ok(JSON.parse(w.backupBlob()).extra.pkgs["أحمد علي"], "الباقات داخل النسخة الاحتياطية");
+  assert.deepEqual(app.errors, []);
+});
+
+test("إلغاء يوم كامل: غير المنفَّذة تصبح «ملغاة»، والمنفَّذة لا تُمسّ، و«تراجع» يعيدها", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  addLesson(app, { student: "ليلى", date: today, from: "08:00" });
+  doneAll(app);
+  addLesson(app, { student: "سالم", date: today, from: "16:00" });
+  t.setTab("cal"); w.render();
+  d.querySelector(`[data-cancelday="${today}"]`).click();
+  assert.ok(d.getElementById("ctext").textContent.includes("حصة واحدة"));
+  assert.ok(d.getElementById("cwhat").textContent.includes("سالم"));
+  d.getElementById("c-ok").click();
+  const by = n => t.lessons().find(l => l.student === n);
+  assert.equal((by("سالم").stat || {})[today], "c");
+  assert.equal(by("ليلى").done, true);
+  assert.equal((by("ليلى").stat || {})[today], undefined);
+  assert.equal(d.querySelector(`[data-cancelday="${today}"]`), null, "لا زرّ حين لا يبقى ما يُلغى");
+  d.getElementById("undo-btn").click();
+  assert.equal((by("سالم").stat || {})[today], undefined, "التراجع أعاد الحصة");
+  assert.deepEqual(app.errors, []);
+});
+
+test("قائمة الانتظار: إضافة وتعديل، والجدولة تملأ النموذج ولا تُخرج الطالب إلا بعد حفظ الحصة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  t.setTab("stu"); w.render();
+  d.getElementById("wait-add").click();
+  d.getElementById("w-save").click();
+  assert.equal(d.getElementById("w-msg").hidden, false, "الاسم مطلوب");
+  d.getElementById("w-name").value = "محمد";
+  d.querySelector('#w-grade [data-v="11"]').click();
+  d.querySelector('#w-subj [data-v="phys"]').click();
+  d.getElementById("w-when").value = "الأحد بعد 5";
+  d.getElementById("w-phone").value = "+965 5555 1234";
+  d.getElementById("w-save").click();
+  assert.equal(t.extra().wait.length, 1);
+  assert.equal(d.querySelector(".wmeta a").getAttribute("href"), "tel:+96555551234");
+
+  d.querySelector("[data-wsched]").click();
+  assert.equal(d.getElementById("f-student").value, "محمد");
+  assert.equal(d.querySelector('#f-grade [aria-pressed="true"]').dataset.v, "11");
+  assert.equal(d.querySelector('#f-subj [aria-pressed="true"]').dataset.v, "phys");
+  d.getElementById("f-cancel").click();
+  assert.equal(t.extra().wait.length, 1, "الإلغاء لا يُخرجه من القائمة");
+
+  t.setTab("stu"); w.render();
+  d.querySelector("[data-wsched]").click();
+  d.getElementById("f-date").value = t.today();
+  d.getElementById("f-from").value = "17:00";
+  d.getElementById("f-save").click();
+  assert.equal(t.extra().wait.length, 0, "خرج من القائمة بعد حفظ الحصة");
+  const l = t.lessons().find(x => x.student === "محمد");
+  assert.equal(l.grade, "11");
+  assert.equal(l.subj, "phys");
+
+  w.doImport({ lessons: [], extra: { wait: [{ id: "wz", name: "نورة", grade: "12", subj: "chem" }] } }, false);
+  assert.equal(t.extra().wait.length, 1, "الدمج يضيف المنتظرين من النسخة");
   assert.deepEqual(app.errors, []);
 });

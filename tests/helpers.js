@@ -16,7 +16,7 @@ function buildHtml() {
     lessons:()=>lessons, money:()=>money, prog:()=>prog, lib:()=>lib, archived:()=>archived,
     today:()=>TODAY, setToday:v=>{TODAY=v;}, setTab:t=>{state.tab=t;},
     entryOf:(pr,id)=>entryOf(pr,id), progStat:n=>progStat(n),
-    deviceCode:()=>deviceCode(), codeSaveNeeded:()=>codeSaveNeeded(), clashSet:l=>clashSet(l),
+    extra:()=>extra, deviceCode:()=>deviceCode(), codeSaveNeeded:()=>codeSaveNeeded(), clashSet:l=>clashSet(l),
     minM:()=>minM(), maxM:()=>maxM()
   };</script></body>`;
   return html.replace("</body>", hook);
