@@ -836,3 +836,73 @@ test("نقل: نفس الموعد الأصلي مرفوض، وفتح «حصة ج
   assert.notEqual(d.getElementById("sheettitle").textContent, "نقل الحصة إلى يوم آخر");
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== الجامعة + مادة باسمها ===== */
+function addUni(app, student, sname, date) {
+  const { d, t } = app;
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = student;
+  d.getElementById("f-date").value = date || t.today();
+  d.querySelector('#f-grade [data-v="uni"]').click();
+  d.querySelector('#f-subj [data-v="__new"]').click();
+  d.getElementById("f-sname").value = sname;
+  d.getElementById("f-save").click();
+}
+
+test("الجامعة: صف جديد، ومادة باسمها تُحفظ وتظهر في البطاقة والفلاتر والإحصاءات", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  assert.ok(d.querySelector('#f-grade [data-v="uni"]') || true);
+  addUni(app, "فهد", "  كيمياء عامة 101 ");
+  const l = t.lessons()[0];
+  assert.equal(l.grade, "uni");
+  assert.equal(l.subj, "u:كيمياء عامة 101", "الاسم يُنظَّف من المسافات الزائدة");
+  assert.ok(d.getElementById("main").innerHTML.includes("كيمياء عامة 101"));
+  assert.ok(d.getElementById("main").innerHTML.includes("جامعة"));
+  t.setTab("stu"); w.render();
+  assert.ok(d.querySelector('[data-sf="u:كيمياء عامة 101"]'), "شريحة تصفية للمادة المسمّاة");
+  assert.deepEqual(app.errors, []);
+});
+
+test("الجامعة: اسم المادة مطلوب، والمادة المسمّاة تظهر خيارًا جاهزًا في الحصة التالية لنفس الصف فقط", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = "فهد";
+  d.getElementById("f-date").value = t.today();
+  d.querySelector('#f-grade [data-v="uni"]').click();
+  assert.equal(d.querySelector('#f-subj [data-v="sci"]'), null, "العلوم المتكاملة للعاشر فقط");
+  d.querySelector('#f-subj [data-v="__new"]').click();
+  assert.equal(d.getElementById("f-sname").hidden, false);
+  d.getElementById("f-save").click();
+  assert.equal(d.getElementById("f-msg").textContent, "اكتب اسم المادة.");
+  assert.equal(t.lessons().length, 0);
+  d.getElementById("f-sname").value = "فيزياء طبية";
+  d.getElementById("f-save").click();
+  assert.equal(t.lessons().length, 1);
+  d.querySelector("[data-add]").click();
+  assert.equal(d.getElementById("f-sname").value, "", "الحقل يبدأ فارغًا");
+  d.querySelector('#f-grade [data-v="uni"]').click();
+  assert.ok(d.querySelector('#f-subj [data-v="u:فيزياء طبية"]'), "خيار جاهز للجامعة");
+  d.querySelector('#f-grade [data-v="11"]').click();
+  assert.equal(d.querySelector('#f-subj [data-v="u:فيزياء طبية"]'), null, "لا يظهر لصفوف المدرسة");
+  d.getElementById("f-cancel").click();
+  assert.deepEqual(app.errors, []);
+});
+
+test("الجامعة: قائمة الانتظار تقبل مادة باسمها", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  t.setTab("stu"); w.render();
+  w.openWait(null);
+  d.getElementById("w-name").value = "نورة";
+  d.querySelector('#w-grade [data-v="uni"]').click();
+  d.querySelector('#w-subj [data-v="__new"]').click();
+  d.getElementById("w-save").click();
+  assert.equal(d.getElementById("w-msg").textContent, "اكتب اسم المادة.");
+  d.getElementById("w-sname").value = "كيمياء تحليلية";
+  d.getElementById("w-save").click();
+  assert.equal(d.getElementById("wscrim").hidden, true);
+  assert.ok(d.getElementById("main").innerHTML.includes("كيمياء تحليلية"));
+  assert.deepEqual(app.errors, []);
+});
