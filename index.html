@@ -625,6 +625,7 @@ img,svg,canvas{max-width:100%;height:auto}
     <div class="sheet-actions">
       <button class="btn primary" id="f-save" type="button">حفظ</button>
       <button class="btn ghost" id="f-cancel" type="button">إلغاء</button>
+      <button class="btn ghost" id="f-move" type="button" hidden style="flex:1 1 100%">⇄ نقل إلى يوم آخر</button>
       <button class="btn ghost" id="f-del" type="button" hidden style="flex:1 1 100%;color:var(--warn)">حذف</button>
     </div>
   </div>
@@ -1199,7 +1200,7 @@ function clashSet(list){
 const state = {
   tab:"cal", mode:"month",
   cur:{y:new Date().getFullYear(), m:new Date().getMonth()},
-  sel:TODAY, editing:null, occDate:null,
+  sel:TODAY, editing:null, occDate:null, moveFrom:null,
   stuFilter:"all", subjFilter:"all", q:"", showArch:false
 };
 
@@ -1251,6 +1252,12 @@ function monthNav(){
   </div>`;
 }
 
+/* نقل حصة إلى يوم آخر: الموعد الأصلي يصبح «مؤجَّلة» ويحفظ في l.mv[تاريخه] رقم الحصة التعويضية،
+   والتعويضية حصة مفردة تحمل mk = {id, date} للموعد الأصلي. حذف التعويضية يعيد زر النقل للأصلية. */
+function movedTo(l, ds){
+  const id = l && l.mv && l.mv[ds];
+  return id ? (lessons.find(x=>x.id===id) || null) : null;
+}
 function lessonRow(l, clashes){
   const g = gradeOf(l.grade), sb = subjOf(l.subj);
   const isClash = clashes && clashes.has(l.id+"|"+l.date);
@@ -1268,6 +1275,8 @@ function lessonRow(l, clashes){
         ${l._rep?`<span class="pill rep">↻ ${esc(repLabel(l))}</span>`:""}
         ${l._mv?`<span class="pill rep">وقت خاص بهذا اليوم</span>`:""}
         ${l._st==="c"?`<span class="pill st-c">ملغاة</span>`:""}${l._st==="p"?`<span class="pill st-p">مؤجَّلة</span>`:""}
+        ${(()=>{ const t = movedTo(l, l.date); return t ? `<span class="pill st-p">نُقلت إلى ${shortDate(t.date)} · ${fmtT(t.from)}</span>` : ""; })()}
+        ${l.mk && l.mk.date ? `<span class="pill rep">تعويض عن ${shortDate(l.mk.date)}</span>` : ""}
         ${isClash?`<span class="pill clash">تعارض</span>`:""}
       </span>
     </span>
@@ -2635,8 +2644,8 @@ function paintOpts(){
     v=>{ draft.kind=v; if(v==="review") draft.rep={t:"none",d:[],until:""}; paintOpts(); });
   const isRev = draft.kind === "review";
   /* سلسلة متكرّرة قيد التعديل: لا يُعرض اختيار النوع — تحويلها إلى مراجعة كان سيحذف كل مواعيدها اللاحقة بصمت */
-  document.getElementById("f-kind").closest(".field").hidden = series;
-  document.getElementById("sheettitle").textContent = cur
+  document.getElementById("f-kind").closest(".field").hidden = series || !!state.moveFrom;
+  document.getElementById("sheettitle").textContent = state.moveFrom ? "نقل الحصة إلى يوم آخر" : cur
     ? (isRev ? "تعديل مراجعة" : (series ? "تعديل حصة متكرّرة" : "تعديل الحصة"))
     : (isRev ? "مراجعة اختبار جديدة" : "موعد جديد");
   document.getElementById("f-kind-hint").hidden = !isRev;
@@ -2649,7 +2658,7 @@ function paintOpts(){
     ? "يُضاف المبلغ إلى مستحق الطالب في «الحسابات» بعد تنفيذ المراجعة، وتبقى محسوبة حصة في العدد."
     : "تُحسب حصة كاملة في العدد، بلا مبلغ إضافي.";
   /* المراجعة موعد واحد: يُخفى خيار التكرار كله حتى لا يُضبط بالخطأ */
-  document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev;
+  document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev || !!state.moveFrom;
   optButtons(document.getElementById("f-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), draft.grade,
     v=>{ draft.grade=v; if(!subjAllowed(draft.subj, v)) draft.subj="chem"; paintOpts(); });
   optButtons(document.getElementById("f-subj"),
@@ -2708,7 +2717,12 @@ function openSheet(les, date, occDate){
   _prefilledFor = null;
   document.getElementById("f-hint").hidden = true;
   document.getElementById("f-del").hidden    = !les;
+  /* النقل لموعد واحد غير منفَّذ ولم يُنقل بعد (الحصة التعويضية نفسها تُنقل بتعديل تاريخها) */
+  const occNow = les ? occOf(les, state.occDate || les.date) : null;
+  document.getElementById("f-move").hidden = !les || !occNow || occNow.done || !!movedTo(les, occNow.date) || !!les.mk;
+  state.moveFrom = null;
   document.getElementById("f-msg").hidden    = true;
+  document.getElementById("f-save").textContent = "حفظ";
   document.querySelector('label[for="f-date"]').textContent = repeating ? "تاريخ بداية التكرار" : "التاريخ";
   paintOpts();
   scrim.hidden = false;
@@ -2742,7 +2756,30 @@ function openReviewFor(name){
 }
 document.getElementById("f-student").addEventListener("change", prefillFromLast);
 document.getElementById("f-student").addEventListener("input", e=>{ if(e.inputType==="insertReplacementText") prefillFromLast(); });
-function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; state.fromWait=null; }
+function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; state.fromWait=null; state.moveFrom=null; }
+/* «نقل إلى يوم آخر»: نموذج حصة جديدة مملوء ببيانات الموعد، بلا تكرار، وتاريخه اليوم التالي للموعد الأصلي */
+function openMove(id, ds){
+  const l = lessons.find(x=>x.id===id); if(!l) return;
+  const o = occOf(l, ds);
+  closeSheet();
+  openSheet(null, key(addDays(parse(ds), 1)));
+  Object.assign(draft, {kind:o.kind||"normal", bill:o.bill==="fee"?"fee":"session", fee:o.fee?String(o.fee):"",
+    grade:o.grade||"10", subj:o.subj||"chem", rep:{t:"none",d:[],until:""},
+    dur:nearestDur(mins(o.to||"17:30") - mins(o.from||"16:00"))});
+  document.getElementById("f-student").value = o.student||"";
+  document.getElementById("f-note").value    = o.note||"";
+  document.getElementById("f-from").value    = o.from||"16:00";
+  document.getElementById("f-fee").value     = draft.fee;
+  paintOpts();
+  state.moveFrom = {id, ds};
+  document.getElementById("sheettitle").textContent = "نقل الحصة إلى يوم آخر";
+  document.getElementById("sheetsub").textContent = `الموعد الأصلي: ${longDate(ds)} · ${fmtT(o.from)} — سيُعلَّم «مؤجَّلة»`;
+  document.getElementById("f-kind").closest(".field").hidden = true;
+  document.querySelector('label[for="f-rep"]').closest(".field").hidden = true;
+  document.querySelector('label[for="f-date"]').textContent = "التاريخ الجديد";
+  document.getElementById("f-save").textContent = "نقل";
+}
+document.getElementById("f-move").onclick = ()=>{ const id = state.editing, ds = state.occDate; if(id && ds) openMove(id, ds); };
 
 /* ============ قائمة الانتظار ============ */
 const wscrim = document.getElementById("wscrim");
@@ -2857,6 +2894,28 @@ document.getElementById("f-save").onclick = ()=>{
     } else putLesson(l);
     if(fw && extra.wait.some(w=>w.id===fw)){ extra.wait = extra.wait.filter(w=>w.id!==fw); saveExtra(); render(); }
   };
+
+  /* نقل: حصة تعويضية مفردة + الموعد الأصلي «مؤجَّلة» ومربوط بها — في خطوة واحدة قابلة للتراجع */
+  const mvf = state.moveFrom;
+  if(mvf){
+    const src = lessons.find(x=>x.id===mvf.id);
+    if(!src){ closeSheet(); return; }
+    if(date === mvf.ds && from === occOf(src, mvf.ds).from){ show("اختر موعدًا مختلفًا عن الموعد الأصلي."); return; }
+    const nl = Object.assign({}, l, {rep:{t:"none",d:[],until:""}, doneOn:{}, skip:[], stat:{}, ov:{}, done:false, mk:{id:mvf.id, date:mvf.ds}});
+    withUndo("نُقلت الحصة إلى "+shortDate(date), ()=>{
+      const i = lessons.findIndex(x=>x.id===mvf.id);
+      const s0 = lessons[i];
+      lessons[i] = Object.assign({}, s0, {
+        stat: Object.assign({}, s0.stat||{}, {[mvf.ds]:"p"}),
+        mv:   Object.assign({}, s0.mv||{},   {[mvf.ds]:nl.id})
+      });
+      state.sel = date;
+      const d = parse(date); state.cur = {y:d.getFullYear(), m:d.getMonth()};
+      closeSheet();
+      putLesson(nl);
+    });
+    return;
+  }
 
   /* حصة متكرّرة تغيّر وقتها في يوم محدّد: قد يكون التغيير لهذا اليوم فقط، فلا يُمسّ وقت السلسلة إلا بموافقة صريحة.
      (باقي الحقول — الاسم والصف والمادة والملاحظة والتكرار — تسري على السلسلة كما كانت.) */
