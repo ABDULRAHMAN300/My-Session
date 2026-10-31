@@ -45,6 +45,8 @@
   --g10:#F2760B;
   --g11:#E5184C;
   --g12:#0E9AA7;
+  --guni:#7C3AED;
+  --usubj:#B4547A;
   --rev:#4338CA;
   --on-rev:#FFFFFF;
   --warn:#E5184C;
@@ -62,7 +64,7 @@
     --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
     --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
     --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
-    --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC;
+    --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC; --guni:#C4A1FF; --usubj:#F28DB5;
     --rev:#A5B4FC; --on-rev:#1B1640;
     --warn:#FF6B8E; --on-violet:#180F2B;
     --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
@@ -75,7 +77,7 @@
   --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
   --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
   --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
-  --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC;
+  --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC; --guni:#C4A1FF; --usubj:#F28DB5;
   --rev:#A5B4FC; --on-rev:#1B1640;
   --warn:#FF6B8E; --on-violet:#180F2B;
   --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
@@ -595,6 +597,7 @@ img,svg,canvas{max-width:100%;height:auto}
     <div class="field">
       <label for="f-subj">المادة</label>
       <div class="opts" id="f-subj"></div>
+      <input type="text" id="f-sname" placeholder="اسم المادة — مثال: كيمياء عامة 101" autocomplete="off" maxlength="40" hidden style="margin-top:8px">
     </div>
     <div class="field">
       <label for="f-date">التاريخ</label>
@@ -625,6 +628,7 @@ img,svg,canvas{max-width:100%;height:auto}
     <div class="sheet-actions">
       <button class="btn primary" id="f-save" type="button">حفظ</button>
       <button class="btn ghost" id="f-cancel" type="button">إلغاء</button>
+      <button class="btn ghost" id="f-move" type="button" hidden style="flex:1 1 100%">⇄ نقل إلى يوم آخر</button>
       <button class="btn ghost" id="f-del" type="button" hidden style="flex:1 1 100%;color:var(--warn)">حذف</button>
     </div>
   </div>
@@ -707,6 +711,7 @@ img,svg,canvas{max-width:100%;height:auto}
     <div class="field">
       <label for="w-subj">المادة</label>
       <div class="opts" id="w-subj"></div>
+      <input type="text" id="w-sname" placeholder="اسم المادة — مثال: كيمياء عامة 101" autocomplete="off" maxlength="40" hidden style="margin-top:8px">
     </div>
     <div class="field">
       <label for="w-when">الأوقات التي يطلبها</label>
@@ -780,7 +785,8 @@ document.documentElement.lang = "ar";
 const GRADES = [
   {v:"10", l:"الصف العاشر",       s:"10", c:"var(--g10)"},
   {v:"11", l:"الحادي عشر",        s:"11", c:"var(--g11)"},
-  {v:"12", l:"الثاني عشر",        s:"12", c:"var(--g12)"}
+  {v:"12", l:"الثاني عشر",        s:"12", c:"var(--g12)"},
+  {v:"uni", l:"جامعة",            s:"ج",  c:"var(--guni)"}
 ];
 const SUBJECTS = [
   {v:"phys", l:"فيزياء",  c:"var(--phys)"},
@@ -812,7 +818,34 @@ const minM = () => {
 const maxM = () => (new Date().getFullYear()+3)*12 + 11;
 
 const gradeOf = v => GRADES.find(g=>g.v===v) || GRADES[0];
-const subjOf  = v => SUBJECTS.find(s=>s.v===v) || SUBJECTS[0];
+/* مادة باسمها (للجامعة أو غيرها): تُخزَّن في subj نفسه بالشكل "u:اسم المادة"، فتعمل الخطة والتصفية والإحصاءات معها تلقائيًا */
+const isCustomSubj = v => typeof v === "string" && v.startsWith("u:");
+const cleanSubjName = t => String(t||"").replace(/[<>"&|]/g,"").replace(/\s+/g," ").trim().slice(0,40);
+const subjOf  = v => isCustomSubj(v) ? {v, l:v.slice(2), c:"var(--usubj)"} : (SUBJECTS.find(s=>s.v===v) || SUBJECTS[0]);
+/* كل المواد المستخدمة: الثابتة ثم المسمّاة (من الحصص وقائمة الانتظار)، بلا تكرار */
+function customSubjects(grade){
+  const set = new Set();
+  const ok = x => isCustomSubj(x.subj) && (!grade || x.grade===grade);
+  (typeof lessons!=="undefined" ? lessons : []).forEach(l=>{ if(ok(l)) set.add(l.subj); });
+  try{ (extra.wait||[]).forEach(w=>{ if(ok(w)) set.add(w.subj); }); }catch(e){}
+  return [...set].sort((a,b)=>a.localeCompare(b,"ar")).map(subjOf);
+}
+const allSubjects = () => SUBJECTS.concat(customSubjects());
+const NEW_SUBJ = "__new";
+/* عند تغيير الصف: تبقى المادة إن كانت مسموحة له (المادة المسمّاة تبقى فقط إن استُخدمت مع هذا الصف) */
+const subjFits = (v, grade) => v === NEW_SUBJ || (isCustomSubj(v) ? customSubjects(grade).some(x=>x.v===v) : subjAllowed(v, grade));
+/* أزرار المادة في النماذج: الثابتة المسموحة للصف + المواد المسمّاة لهذا الصف + «مادة باسمها» */
+function subjChoices(grade, cur){
+  const list = SUBJECTS.filter(x=>subjAllowed(x.v, grade)).concat(customSubjects(grade));
+  if(isCustomSubj(cur) && !list.some(x=>x.v===cur)) list.push(subjOf(cur));
+  return list.map(x=>({v:x.v, l:x.l, dot:x.c})).concat({v:NEW_SUBJ, l:"+ مادة باسمها"});
+}
+/* يقرأ اسم المادة الجديدة من الحقل؛ يرجع القيمة النهائية أو null إن كان الاسم فارغًا */
+function resolveSubj(cur, inputId){
+  if(cur !== NEW_SUBJ) return cur;
+  const name = cleanSubjName(document.getElementById(inputId).value);
+  return name ? "u:"+name : null;
+}
 /* العلوم المتكاملة متاحة للصف العاشر فقط */
 const subjAllowed = (v, grade) => { const s = SUBJECTS.find(x=>x.v===v); return !s || !s.g || s.g.includes(grade); };
 
@@ -1199,7 +1232,7 @@ function clashSet(list){
 const state = {
   tab:"cal", mode:"month",
   cur:{y:new Date().getFullYear(), m:new Date().getMonth()},
-  sel:TODAY, editing:null, occDate:null,
+  sel:TODAY, editing:null, occDate:null, moveFrom:null,
   stuFilter:"all", subjFilter:"all", q:"", showArch:false
 };
 
@@ -1251,6 +1284,12 @@ function monthNav(){
   </div>`;
 }
 
+/* نقل حصة إلى يوم آخر: الموعد الأصلي يصبح «مؤجَّلة» ويحفظ في l.mv[تاريخه] رقم الحصة التعويضية،
+   والتعويضية حصة مفردة تحمل mk = {id, date} للموعد الأصلي. حذف التعويضية يعيد زر النقل للأصلية. */
+function movedTo(l, ds){
+  const id = l && l.mv && l.mv[ds];
+  return id ? (lessons.find(x=>x.id===id) || null) : null;
+}
 function lessonRow(l, clashes){
   const g = gradeOf(l.grade), sb = subjOf(l.subj);
   const isClash = clashes && clashes.has(l.id+"|"+l.date);
@@ -1268,6 +1307,8 @@ function lessonRow(l, clashes){
         ${l._rep?`<span class="pill rep">↻ ${esc(repLabel(l))}</span>`:""}
         ${l._mv?`<span class="pill rep">وقت خاص بهذا اليوم</span>`:""}
         ${l._st==="c"?`<span class="pill st-c">ملغاة</span>`:""}${l._st==="p"?`<span class="pill st-p">مؤجَّلة</span>`:""}
+        ${(()=>{ const t = movedTo(l, l.date); return t ? `<span class="pill st-p">نُقلت إلى ${shortDate(t.date)} · ${fmtT(t.from)}</span>` : ""; })()}
+        ${l.mk && l.mk.date ? `<span class="pill rep">تعويض عن ${shortDate(l.mk.date)}</span>` : ""}
         ${isClash?`<span class="pill clash">تعارض</span>`:""}
       </span>
     </span>
@@ -1378,7 +1419,7 @@ function renderCal(){
 
 function legend(){
   return `<div class="legend">
-    ${SUBJECTS.map(s=>`<span><i style="background:${s.c}"></i>${s.l}</span>`).join("")}
+    ${SUBJECTS.map(s=>`<span><i style="background:${s.c}"></i>${s.l}</span>`).join("")}${customSubjects().length?`<span><i style="background:var(--usubj)"></i>مواد أخرى</span>`:""}
     <span><i style="background:var(--rev);border-radius:2px;transform:rotate(45deg)"></i>مراجعة اختبار</span>
     <span><i style="background:var(--warn)"></i>تعارض مواعيد</span>
   </div>
@@ -1447,7 +1488,7 @@ function renderStudents(){
   }
   html += `<div class="chips" role="group" aria-label="تصفية حسب المادة">
     <button class="chip" type="button" data-sf="all" aria-pressed="${state.subjFilter==="all"}">كل المواد</button>
-    ${SUBJECTS.map(s=>`<button class="chip" type="button" data-sf="${s.v}" aria-pressed="${state.subjFilter===s.v}"><i style="background:${s.c}"></i>${s.l}</button>`).join("")}
+    ${allSubjects().map(s=>`<button class="chip" type="button" data-sf="${esc(s.v)}" aria-pressed="${state.subjFilter===s.v}"><i style="background:${s.c}"></i>${esc(s.l)}</button>`).join("")}
   </div>`;
 
   const shown = names.filter(n=> archOk(n) && matchesQ(n) && (state.subjFilter==="all" || byStu[n].some(l=>l.subj===state.subjFilter)));
@@ -1684,7 +1725,7 @@ function renderStats(){
   const doneMin = done.reduce((t,l)=>t+durOf(l),0);
   const allMin  = all.reduce((t,l)=>t+durOf(l),0);
 
-  const bySubj = SUBJECTS.map(x=>({label:x.l, color:x.c,
+  const bySubj = allSubjects().map(x=>({label:x.l, color:x.c,
       n:done.filter(l=>l.subj===x.v).length,
       m:done.filter(l=>l.subj===x.v).reduce((a,l)=>a+durOf(l),0)})).filter(x=>x.n>0);
   const byGrade = GRADES.map(g=>({label:g.l, color:g.c, n:done.filter(l=>l.grade===g.v).length})).filter(x=>x.n>0);
@@ -2635,8 +2676,8 @@ function paintOpts(){
     v=>{ draft.kind=v; if(v==="review") draft.rep={t:"none",d:[],until:""}; paintOpts(); });
   const isRev = draft.kind === "review";
   /* سلسلة متكرّرة قيد التعديل: لا يُعرض اختيار النوع — تحويلها إلى مراجعة كان سيحذف كل مواعيدها اللاحقة بصمت */
-  document.getElementById("f-kind").closest(".field").hidden = series;
-  document.getElementById("sheettitle").textContent = cur
+  document.getElementById("f-kind").closest(".field").hidden = series || !!state.moveFrom;
+  document.getElementById("sheettitle").textContent = state.moveFrom ? "نقل الحصة إلى يوم آخر" : cur
     ? (isRev ? "تعديل مراجعة" : (series ? "تعديل حصة متكرّرة" : "تعديل الحصة"))
     : (isRev ? "مراجعة اختبار جديدة" : "موعد جديد");
   document.getElementById("f-kind-hint").hidden = !isRev;
@@ -2649,12 +2690,12 @@ function paintOpts(){
     ? "يُضاف المبلغ إلى مستحق الطالب في «الحسابات» بعد تنفيذ المراجعة، وتبقى محسوبة حصة في العدد."
     : "تُحسب حصة كاملة في العدد، بلا مبلغ إضافي.";
   /* المراجعة موعد واحد: يُخفى خيار التكرار كله حتى لا يُضبط بالخطأ */
-  document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev;
+  document.querySelector('label[for="f-rep"]').closest(".field").hidden = isRev || !!state.moveFrom;
   optButtons(document.getElementById("f-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), draft.grade,
-    v=>{ draft.grade=v; if(!subjAllowed(draft.subj, v)) draft.subj="chem"; paintOpts(); });
-  optButtons(document.getElementById("f-subj"),
-    SUBJECTS.filter(s=>subjAllowed(s.v, draft.grade)).map(s=>({v:s.v,l:s.l,dot:s.c})), draft.subj,
-    v=>{ draft.subj=v; paintOpts(); });
+    v=>{ draft.grade=v; if(!subjFits(draft.subj, v)) draft.subj="chem"; paintOpts(); });
+  optButtons(document.getElementById("f-subj"), subjChoices(draft.grade, draft.subj), draft.subj,
+    v=>{ draft.subj=v; paintOpts(); if(v===NEW_SUBJ) document.getElementById("f-sname").focus(); });
+  document.getElementById("f-sname").hidden = draft.subj !== NEW_SUBJ;
   optButtons(document.getElementById("f-rep"), REPEATS.map(r=>({v:r.v,l:r.l})), draft.rep.t,
     v=>{
       draft.rep.t=v;
@@ -2705,10 +2746,16 @@ function openSheet(les, date, occDate){
   document.getElementById("f-date").value    = ds;
   document.getElementById("f-from").value    = les ? (shown.from||"16:00") : "16:00";
   document.getElementById("f-fee").value = draft.fee;
+  document.getElementById("f-sname").value = "";
   _prefilledFor = null;
   document.getElementById("f-hint").hidden = true;
   document.getElementById("f-del").hidden    = !les;
+  /* النقل لموعد واحد غير منفَّذ ولم يُنقل بعد (الحصة التعويضية نفسها تُنقل بتعديل تاريخها) */
+  const occNow = les ? occOf(les, state.occDate || les.date) : null;
+  document.getElementById("f-move").hidden = !les || !occNow || occNow.done || !!movedTo(les, occNow.date) || !!les.mk;
+  state.moveFrom = null;
   document.getElementById("f-msg").hidden    = true;
+  document.getElementById("f-save").textContent = "حفظ";
   document.querySelector('label[for="f-date"]').textContent = repeating ? "تاريخ بداية التكرار" : "التاريخ";
   paintOpts();
   scrim.hidden = false;
@@ -2742,17 +2789,40 @@ function openReviewFor(name){
 }
 document.getElementById("f-student").addEventListener("change", prefillFromLast);
 document.getElementById("f-student").addEventListener("input", e=>{ if(e.inputType==="insertReplacementText") prefillFromLast(); });
-function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; state.fromWait=null; }
+function closeSheet(){ scrim.hidden = true; state.editing=null; state.occDate=null; state.fromWait=null; state.moveFrom=null; }
+/* «نقل إلى يوم آخر»: نموذج حصة جديدة مملوء ببيانات الموعد، بلا تكرار، وتاريخه اليوم التالي للموعد الأصلي */
+function openMove(id, ds){
+  const l = lessons.find(x=>x.id===id); if(!l) return;
+  const o = occOf(l, ds);
+  closeSheet();
+  openSheet(null, key(addDays(parse(ds), 1)));
+  Object.assign(draft, {kind:o.kind||"normal", bill:o.bill==="fee"?"fee":"session", fee:o.fee?String(o.fee):"",
+    grade:o.grade||"10", subj:o.subj||"chem", rep:{t:"none",d:[],until:""},
+    dur:nearestDur(mins(o.to||"17:30") - mins(o.from||"16:00"))});
+  document.getElementById("f-student").value = o.student||"";
+  document.getElementById("f-note").value    = o.note||"";
+  document.getElementById("f-from").value    = o.from||"16:00";
+  document.getElementById("f-fee").value     = draft.fee;
+  paintOpts();
+  state.moveFrom = {id, ds};
+  document.getElementById("sheettitle").textContent = "نقل الحصة إلى يوم آخر";
+  document.getElementById("sheetsub").textContent = `الموعد الأصلي: ${longDate(ds)} · ${fmtT(o.from)} — سيُعلَّم «مؤجَّلة»`;
+  document.getElementById("f-kind").closest(".field").hidden = true;
+  document.querySelector('label[for="f-rep"]').closest(".field").hidden = true;
+  document.querySelector('label[for="f-date"]').textContent = "التاريخ الجديد";
+  document.getElementById("f-save").textContent = "نقل";
+}
+document.getElementById("f-move").onclick = ()=>{ const id = state.editing, ds = state.occDate; if(id && ds) openMove(id, ds); };
 
 /* ============ قائمة الانتظار ============ */
 const wscrim = document.getElementById("wscrim");
 let wdraft = null;
 function paintWait(){
   optButtons(document.getElementById("w-grade"), GRADES.map(g=>({v:g.v,l:g.l,dot:g.c})), wdraft.grade,
-    v=>{ wdraft.grade=v; if(!subjAllowed(wdraft.subj, v)) wdraft.subj="chem"; paintWait(); });
-  optButtons(document.getElementById("w-subj"),
-    SUBJECTS.filter(x=>subjAllowed(x.v, wdraft.grade)).map(x=>({v:x.v,l:x.l,dot:x.c})), wdraft.subj,
-    v=>{ wdraft.subj=v; paintWait(); });
+    v=>{ wdraft.grade=v; if(!subjFits(wdraft.subj, v)) wdraft.subj="chem"; paintWait(); });
+  optButtons(document.getElementById("w-subj"), subjChoices(wdraft.grade, wdraft.subj), wdraft.subj,
+    v=>{ wdraft.subj=v; paintWait(); if(v===NEW_SUBJ) document.getElementById("w-sname").focus(); });
+  document.getElementById("w-sname").hidden = wdraft.subj !== NEW_SUBJ;
 }
 function openWait(w){
   wdraft = {id: w ? w.id : null, grade: w ? w.grade : "10", subj: w ? w.subj : "chem"};
@@ -2762,6 +2832,7 @@ function openWait(w){
   document.getElementById("w-phone").value = w ? (w.phone||"") : "";
   document.getElementById("w-note").value  = w ? (w.note||"") : "";
   document.getElementById("w-msg").hidden = true;
+  document.getElementById("w-sname").value = "";
   paintWait();
   wscrim.hidden = false;
   setTimeout(()=>document.getElementById("w-name").focus(), 50);
@@ -2773,6 +2844,9 @@ document.getElementById("w-save").onclick = ()=>{
   const name = document.getElementById("w-name").value.trim();
   const m = document.getElementById("w-msg");
   if(!name){ m.textContent = "اكتب اسم الطالب."; m.hidden = false; document.getElementById("w-name").focus(); return; }
+  const wsubj = resolveSubj(wdraft.subj, "w-sname");
+  if(!wsubj){ m.textContent = "اكتب اسم المادة."; m.hidden = false; document.getElementById("w-sname").focus(); return; }
+  wdraft.subj = wsubj;
   const old = wdraft.id ? extra.wait.find(x=>x.id===wdraft.id) : null;
   const w = {id: old ? old.id : newId("w"), name, grade: wdraft.grade, subj: wdraft.subj,
     when: document.getElementById("w-when").value.trim(),
@@ -2812,6 +2886,9 @@ document.getElementById("f-save").onclick = ()=>{
   if(!student){ show("اكتب اسم الطالب."); document.getElementById("f-student").focus(); return; }
   if(!date){ show("اختر تاريخ الحصة."); return; }
   if(!from){ show("حدّد وقت البدء."); return; }
+  const subjV = resolveSubj(draft.subj, "f-sname");
+  if(!subjV){ show("اكتب اسم المادة."); document.getElementById("f-sname").focus(); return; }
+  draft.subj = subjV;
   const fee = draft.kind==="review" && draft.bill==="fee" ? Number(document.getElementById("f-fee").value) : 0;
   if(draft.kind==="review" && draft.bill==="fee" && !(fee>0)){ show("اكتب مبلغ المراجعة."); document.getElementById("f-fee").focus(); return; }
 
@@ -2857,6 +2934,28 @@ document.getElementById("f-save").onclick = ()=>{
     } else putLesson(l);
     if(fw && extra.wait.some(w=>w.id===fw)){ extra.wait = extra.wait.filter(w=>w.id!==fw); saveExtra(); render(); }
   };
+
+  /* نقل: حصة تعويضية مفردة + الموعد الأصلي «مؤجَّلة» ومربوط بها — في خطوة واحدة قابلة للتراجع */
+  const mvf = state.moveFrom;
+  if(mvf){
+    const src = lessons.find(x=>x.id===mvf.id);
+    if(!src){ closeSheet(); return; }
+    if(date === mvf.ds && from === occOf(src, mvf.ds).from){ show("اختر موعدًا مختلفًا عن الموعد الأصلي."); return; }
+    const nl = Object.assign({}, l, {rep:{t:"none",d:[],until:""}, doneOn:{}, skip:[], stat:{}, ov:{}, done:false, mk:{id:mvf.id, date:mvf.ds}});
+    withUndo("نُقلت الحصة إلى "+shortDate(date), ()=>{
+      const i = lessons.findIndex(x=>x.id===mvf.id);
+      const s0 = lessons[i];
+      lessons[i] = Object.assign({}, s0, {
+        stat: Object.assign({}, s0.stat||{}, {[mvf.ds]:"p"}),
+        mv:   Object.assign({}, s0.mv||{},   {[mvf.ds]:nl.id})
+      });
+      state.sel = date;
+      const d = parse(date); state.cur = {y:d.getFullYear(), m:d.getMonth()};
+      closeSheet();
+      putLesson(nl);
+    });
+    return;
+  }
 
   /* حصة متكرّرة تغيّر وقتها في يوم محدّد: قد يكون التغيير لهذا اليوم فقط، فلا يُمسّ وقت السلسلة إلا بموافقة صريحة.
      (باقي الحقول — الاسم والصف والمادة والملاحظة والتكرار — تسري على السلسلة كما كانت.) */

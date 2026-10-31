@@ -746,3 +746,163 @@ test("قائمة الانتظار: إضافة وتعديل، والجدولة ت
   assert.equal(t.extra().wait.length, 1, "الدمج يضيف المنتظرين من النسخة");
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== نقل حصة إلى يوم آخر ===== */
+function moveFirst(app, newDate, newFrom) {
+  const { d } = app;
+  d.querySelector("[data-edit]").click();
+  assert.equal(d.getElementById("f-move").hidden, false, "زر النقل ظاهر لموعد غير منفَّذ");
+  d.getElementById("f-move").click();
+  assert.equal(d.getElementById("sheettitle").textContent, "نقل الحصة إلى يوم آخر");
+  assert.equal(d.getElementById("f-rep").closest(".field").hidden, true, "لا تكرار للحصة التعويضية");
+  d.getElementById("f-date").value = newDate;
+  if (newFrom) d.getElementById("f-from").value = newFrom;
+  d.getElementById("f-save").click();
+}
+
+test("نقل حصة مفردة: الأصلية «مؤجَّلة» ومربوطة، والتعويضية بنفس البيانات في اليوم الجديد", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today(), later = dayAfter(today, 3);
+  addLesson(app, { student: "سالم", date: today, from: "16:00", dur: 60 });
+  moveFirst(app, later, "18:00");
+  const ls = t.lessons();
+  assert.equal(ls.length, 2);
+  const orig = ls.find(l => !l.mk), mk = ls.find(l => l.mk);
+  assert.equal(orig.stat[today], "p");
+  assert.equal(orig.mv[today], mk.id);
+  assert.deepEqual(plain(mk.mk), { id: orig.id, date: today });
+  assert.equal(mk.date, later); assert.equal(mk.from, "18:00"); assert.equal(mk.to, "19:00");
+  assert.equal(mk.student, "سالم"); assert.equal(mk.rep.t, "none");
+  assert.ok(d.getElementById("main").innerHTML.includes("تعويض عن"), "الحصة التعويضية موسومة");
+  w.render(); t.setTab("cal");
+  assert.equal(w.lessonsOn(today)[0]._st, "p");
+  assert.deepEqual(app.errors, []);
+});
+
+test("نقل موعد من سلسلة متكرّرة: لا يمسّ بقية المواعيد، و«تراجع» يعيد كل شيء", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today(), tomorrow = dayAfter(today, 1);
+  addDaily(app, "ليلى");
+  moveFirst(app, dayAfter(today, 5), "19:00");
+  const series = t.lessons().find(l => l.rep && l.rep.t === "daily");
+  assert.equal(series.stat[today], "p");
+  assert.equal(series.from, "16:00", "وقت السلسلة كما هو");
+  assert.equal(w.lessonsOn(tomorrow).find(l => l.student === "ليلى")._st, null, "الغد لم يتأثر");
+  d.getElementById("undo-btn").click();
+  assert.equal(t.lessons().length, 1, "التراجع حذف التعويضية");
+  assert.ok(!(t.lessons()[0].stat || {})[today], "والأصلية عادت كما كانت");
+  assert.deepEqual(app.errors, []);
+});
+
+test("نقل: زر النقل يختفي بعد النقل ويعود إذا حُذفت التعويضية، ولا يظهر للمنفَّذة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  addLesson(app, { student: "سالم", date: today, from: "16:00" });
+  moveFirst(app, dayAfter(today, 2));
+  const orig = t.lessons().find(l => !l.mk);
+  w.openSheet(t.lessons().find(l => !l.mk), null, today);
+  assert.equal(d.getElementById("f-move").hidden, true, "نُقلت بالفعل");
+  d.getElementById("f-cancel").click();
+  const mk = t.lessons().find(l => l.mk);
+  const ls = t.lessons(); ls.splice(ls.indexOf(mk), 1); w.bumpMemo(); w.render();
+  w.openSheet(t.lessons().find(l => l.id === orig.id), null, today);
+  assert.equal(d.getElementById("f-move").hidden, false, "عاد الزر بعد حذف التعويضية");
+  d.getElementById("f-cancel").click();
+  addLesson(app, { student: "منفذ", date: today, from: "20:00" });
+  const i = ls.findIndex(l => l.student === "منفذ"); ls[i] = Object.assign({}, ls[i], { done: true }); w.bumpMemo(); w.render();
+  w.openSheet(ls[i], null, today);
+  assert.equal(d.getElementById("f-move").hidden, true, "لا نقل لحصة منفَّذة");
+  assert.deepEqual(app.errors, []);
+});
+
+test("نقل: نفس الموعد الأصلي مرفوض، وفتح «حصة جديدة» بعده يعيد النموذج طبيعيًا", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  const today = t.today();
+  addLesson(app, { student: "سالم", date: today, from: "16:00" });
+  d.querySelector("[data-edit]").click();
+  d.getElementById("f-move").click();
+  d.getElementById("f-date").value = today;
+  d.getElementById("f-save").click();
+  assert.equal(d.getElementById("f-msg").hidden, false);
+  assert.equal(t.lessons().length, 1);
+  d.getElementById("f-cancel").click();
+  d.querySelector("[data-add]").click();
+  assert.equal(d.getElementById("f-save").textContent, "حفظ");
+  assert.equal(d.getElementById("f-rep").closest(".field").hidden, false);
+  assert.notEqual(d.getElementById("sheettitle").textContent, "نقل الحصة إلى يوم آخر");
+  assert.deepEqual(app.errors, []);
+});
+
+/* ===== الجامعة + مادة باسمها ===== */
+function addUni(app, student, sname, date) {
+  const { d, t } = app;
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = student;
+  d.getElementById("f-date").value = date || t.today();
+  d.querySelector('#f-grade [data-v="uni"]').click();
+  d.querySelector('#f-subj [data-v="__new"]').click();
+  d.getElementById("f-sname").value = sname;
+  d.getElementById("f-save").click();
+}
+
+test("الجامعة: صف جديد، ومادة باسمها تُحفظ وتظهر في البطاقة والفلاتر والإحصاءات", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  assert.ok(d.querySelector('#f-grade [data-v="uni"]') || true);
+  addUni(app, "فهد", "  كيمياء عامة 101 ");
+  const l = t.lessons()[0];
+  assert.equal(l.grade, "uni");
+  assert.equal(l.subj, "u:كيمياء عامة 101", "الاسم يُنظَّف من المسافات الزائدة");
+  assert.ok(d.getElementById("main").innerHTML.includes("كيمياء عامة 101"));
+  assert.ok(d.getElementById("main").innerHTML.includes("جامعة"));
+  t.setTab("stu"); w.render();
+  assert.ok(d.querySelector('[data-sf="u:كيمياء عامة 101"]'), "شريحة تصفية للمادة المسمّاة");
+  assert.deepEqual(app.errors, []);
+});
+
+test("الجامعة: اسم المادة مطلوب، والمادة المسمّاة تظهر خيارًا جاهزًا في الحصة التالية لنفس الصف فقط", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = "فهد";
+  d.getElementById("f-date").value = t.today();
+  d.querySelector('#f-grade [data-v="uni"]').click();
+  assert.equal(d.querySelector('#f-subj [data-v="sci"]'), null, "العلوم المتكاملة للعاشر فقط");
+  d.querySelector('#f-subj [data-v="__new"]').click();
+  assert.equal(d.getElementById("f-sname").hidden, false);
+  d.getElementById("f-save").click();
+  assert.equal(d.getElementById("f-msg").textContent, "اكتب اسم المادة.");
+  assert.equal(t.lessons().length, 0);
+  d.getElementById("f-sname").value = "فيزياء طبية";
+  d.getElementById("f-save").click();
+  assert.equal(t.lessons().length, 1);
+  d.querySelector("[data-add]").click();
+  assert.equal(d.getElementById("f-sname").value, "", "الحقل يبدأ فارغًا");
+  d.querySelector('#f-grade [data-v="uni"]').click();
+  assert.ok(d.querySelector('#f-subj [data-v="u:فيزياء طبية"]'), "خيار جاهز للجامعة");
+  d.querySelector('#f-grade [data-v="11"]').click();
+  assert.equal(d.querySelector('#f-subj [data-v="u:فيزياء طبية"]'), null, "لا يظهر لصفوف المدرسة");
+  d.getElementById("f-cancel").click();
+  assert.deepEqual(app.errors, []);
+});
+
+test("الجامعة: قائمة الانتظار تقبل مادة باسمها", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  t.setTab("stu"); w.render();
+  w.openWait(null);
+  d.getElementById("w-name").value = "نورة";
+  d.querySelector('#w-grade [data-v="uni"]').click();
+  d.querySelector('#w-subj [data-v="__new"]').click();
+  d.getElementById("w-save").click();
+  assert.equal(d.getElementById("w-msg").textContent, "اكتب اسم المادة.");
+  d.getElementById("w-sname").value = "كيمياء تحليلية";
+  d.getElementById("w-save").click();
+  assert.equal(d.getElementById("wscrim").hidden, true);
+  assert.ok(d.getElementById("main").innerHTML.includes("كيمياء تحليلية"));
+  assert.deepEqual(app.errors, []);
+});
