@@ -528,6 +528,9 @@ img,svg,canvas{max-width:100%;height:auto}
 .paylist{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
 .paylist div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-soft);padding:3px 0}
 .paylist b{font-family:var(--font-d);color:var(--ink);font-variant-numeric:tabular-nums}
+.paylist .lg{font-size:10.5px;font-family:var(--font-d);border-radius:999px;padding:1px 8px}
+.paylist .lg-p{background:color-mix(in srgb,var(--chem) 14%,transparent);color:var(--chem)}
+.paylist .lg-c{background:color-mix(in srgb,var(--warn) 12%,transparent);color:var(--warn)}
 .paylist .x{margin-inline-start:auto;border:0;background:transparent;color:var(--warn);font-size:14px;padding:2px 6px}
 .hint{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:18px;line-height:1.7}
 .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding:12px 14px;background:var(--surface-2);border-radius:var(--r)}
@@ -899,7 +902,7 @@ function undoNow(){
   undoStale();
   const o = JSON.parse(u.snap);
   lessons = o.lessons||[]; lib = o.lib||{}; prog = o.prog||{};
-  money = o.money||{due:{}, paid:{}, pays:[]}; archived = o.archived||{}; extra = normExtra(o.extra);
+  money = o.money||{due:{}, paid:{}, pays:[]}; if(!Array.isArray(money.chg)) money.chg = []; archived = o.archived||{}; extra = normExtra(o.extra);
   save(); saveLib(); saveProg(); saveMoney(); saveArch(); saveExtra();
   render();
   if(!lscrim.hidden) paintPlan();     // نافذة الخطة مفتوحة: أعد رسمها بالقائمة المستعادة
@@ -938,7 +941,7 @@ let archived = {};
 function loadArch(){ try{ archived = JSON.parse(localStorage.getItem(ARCH_LS)||"{}") || {}; }catch(e){ archived = {}; } }
 function saveArch(){ try{ localStorage.setItem(ARCH_LS, JSON.stringify(archived)); }catch(e){} cloudPush(); }
 const MONEY_LS = "hisas_money_v1"; // {due:{اسم:مبلغ}, paid:{اسم:مبلغ}}
-let lib = {}, prog = {}, money = {due:{}, paid:{}, pays:[]};
+let lib = {}, prog = {}, money = {due:{}, paid:{}, pays:[], chg:[]};
 
 const libKey = (subj, grade) => subj + "-" + grade;
 function loadLib(){
@@ -961,7 +964,7 @@ function saveProg(){ try{ localStorage.setItem(PROG_LS, JSON.stringify(prog)); }
 function loadMoney(){
   try{
     const m = JSON.parse(localStorage.getItem(MONEY_LS)||"null");
-    if(m){ money = {due:m.due||{}, paid:m.paid||{}, pays:Array.isArray(m.pays)?m.pays:[]}; return; }
+    if(m){ money = {due:m.due||{}, paid:m.paid||{}, pays:Array.isArray(m.pays)?m.pays:[], chg:Array.isArray(m.chg)?m.chg:[]}; return; }
   }catch(e){}
   /* ترحيل من النسخة السابقة: تُجمع الدفعات القديمة في خانة المدفوع، وتُحفظ أيضًا كسجل دفعات */
   try{
@@ -974,7 +977,7 @@ function loadMoney(){
         paid[x.student] = (paid[x.student]||0) + amt;
         pays.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6), student:x.student, amount:amt, date:x.date||TODAY});
       });
-      money = {due:{}, paid, pays};
+      money = {due:{}, paid, pays, chg:[]};
       saveMoney();
     }
   }catch(e){}
@@ -1014,6 +1017,32 @@ function delPayment(id){
   render();
 }
 
+/* مبالغ الحصص المؤرَّخة: كل مبلغ يُضاف إلى «المستحق» بتاريخه (كما تُضاف الدفعة إلى «المدفوع»)،
+   فلا حاجة لتعديل المستحق يدويًا. money.chg = [{id, student, amount, date, note}] */
+function chgOf(n){ return (money.chg||[]).filter(c=>c.student===n); }
+function addCharge(n, amt, ds){
+  amt = Math.round((Number(amt)||0)*1000)/1000;
+  if(!n || !(amt>0)) return;
+  if(!Array.isArray(money.chg)) money.chg = [];
+  money.chg.push({id:newId("c"), student:n, amount:amt, date:ds||TODAY});
+  money.due[n] = Math.max(0, (Number(money.due[n])||0) + amt);
+  saveMoney();
+  render();
+}
+function delCharge(id){
+  const i = (money.chg||[]).findIndex(c=>c.id===id);
+  if(i<0) return;
+  const c = money.chg[i];
+  money.chg.splice(i,1);
+  money.due[c.student] = Math.max(0, (Number(money.due[c.student])||0) - (Number(c.amount)||0));
+  saveMoney();
+  render();
+}
+/* سجل الحساب الموحَّد: الدفعات ومبالغ الحصص معًا، الأحدث أولًا */
+function ledgerOf(n){
+  return paysOf(n).map(p=>Object.assign({t:"p"}, p)).concat(chgOf(n).map(c=>Object.assign({t:"c"}, c)))
+    .sort((a,b)=>b.date.localeCompare(a.date) || (b.t==="c") - (a.t==="c"));
+}
 const kd = n => (Math.round((Number(n)||0)*1000)/1000).toFixed(3);
 const firstDate = () => { const d = lessons.map(l=>l.date).filter(Boolean).sort(); return d.length ? d[0] : TODAY; };
 const doneUpToToday = () => expand(firstDate(), TODAY).filter(l=>l.done);
@@ -1037,6 +1066,7 @@ function mergeMoney(oldName, newName){
   if(dueOld !== undefined){ money.due[newName] = (Number(money.due[newName])||0) + (Number(dueOld)||0); delete money.due[oldName]; }
   if(paidOld !== undefined){ money.paid[newName] = (Number(money.paid[newName])||0) + (Number(paidOld)||0); delete money.paid[oldName]; }
   money.pays.forEach(p=>{ if(p.student===oldName) p.student = newName; });
+  (money.chg||[]).forEach(c=>{ if(c.student===oldName) c.student = newName; });
 }
 function renameStudent(oldName, newName){
   newName = (newName||"").trim();
@@ -1614,13 +1644,20 @@ function renderPay(){
         <input type="date" data-newpaydate value="${TODAY}">
         <button class="minibtn solid" type="button" data-addpay="${esc(n)}">+ سجّل دفعة</button>
       </div>
-      ${paysOf(n).length?`<div class="paylist">
-        ${paysOf(n).map(p=>`<div><span class="num">${shortDate(p.date)}</span><b>${kd(p.amount)} د.ك</b><button class="x" type="button" data-delpay="${p.id}" aria-label="حذف الدفعة">×</button></div>`).join("")}
+      <div class="pay-row">
+        <label>مبلغ حصص<input type="number" inputmode="decimal" min="0" step="0.5" data-newchg placeholder="0"></label>
+        <input type="date" data-newchgdate value="${TODAY}">
+        <button class="minibtn" type="button" data-addchg="${esc(n)}">+ أضف للمستحق</button>
+      </div>
+      ${ledgerOf(n).length?`<div class="paylist">
+        ${ledgerOf(n).map(x=>x.t==="p"
+          ? `<div><span class="num">${shortDate(x.date)}</span><span class="lg lg-p">دفعة</span><b>${kd(x.amount)} د.ك</b><button class="x" type="button" data-delpay="${x.id}" aria-label="حذف الدفعة">×</button></div>`
+          : `<div><span class="num">${shortDate(x.date)}</span><span class="lg lg-c">حصص</span><b>+${kd(x.amount)} د.ك</b><button class="x" type="button" data-delchg="${x.id}" aria-label="حذف مبلغ الحصص">×</button></div>`).join("")}
       </div>`:""}
     </div>`;
   });
 
-  html += `<p class="hint">المستحق يُكتب يدويًا كما تتفق مع كل طالب. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. مواعيد مراجعة الاختبارات تُحتسب حصصًا كاملة ضمن العدد، وما اخترتَ له «مبلغ على الحساب» يُضاف إلى المستحق تلقائيًا بعد تنفيذه. عدد الحصص للاطلاع فقط ولا يدخل في حساب المبلغ تلقائيًا.</p>`;
+  html += `<p class="hint">المستحق يزيد تلقائيًا عند إضافة «مبلغ حصص» بتاريخه، ويمكن تعديله يدويًا أيضًا. المدفوع يزيد تلقائيًا عند تسجيل دفعة، ويمكن تعديله يدويًا أيضًا. مواعيد مراجعة الاختبارات تُحتسب حصصًا كاملة ضمن العدد، وما اخترتَ له «مبلغ على الحساب» يُضاف إلى المستحق تلقائيًا بعد تنفيذه. عدد الحصص للاطلاع فقط ولا يدخل في حساب المبلغ تلقائيًا.</p>`;
   main.innerHTML = html;
 
   main.querySelectorAll("[data-due]").forEach(i=>i.onchange=()=>{
@@ -1641,6 +1678,26 @@ function renderPay(){
     const amt = Number(amtEl.value);
     if(!(amt>0)){ amtEl.focus(); return; }
     addPayment(n, amt, dateEl.value || TODAY);
+  });
+  main.querySelectorAll("[data-addchg]").forEach(b=>b.onclick=()=>{
+    const n = b.dataset.addchg;
+    const card = b.closest(".stu-card");
+    const amtEl = card.querySelector("[data-newchg]");
+    const dateEl = card.querySelector("[data-newchgdate]");
+    const amt = Number(amtEl.value);
+    if(!(amt>0)){ amtEl.focus(); return; }
+    addCharge(n, amt, dateEl.value || TODAY);
+  });
+  main.querySelectorAll("[data-delchg]").forEach(b=>b.onclick=()=>{
+    const id = b.dataset.delchg;
+    const c = (money.chg||[]).find(x=>x.id===id);
+    askConfirm({
+      title:"حذف مبلغ حصص",
+      text:"سيُحذف هذا السجل، ويُخصَم مبلغه من «المستحق».",
+      what: c ? (c.student+" — "+kd(c.amount)+" د.ك · "+shortDate(c.date)) : "",
+      ok:"حذف",
+      run: ()=>withUndo("حُذف مبلغ الحصص", ()=>delCharge(id))
+    });
   });
   main.querySelectorAll("[data-delpay]").forEach(b=>b.onclick=()=>{
     const id = b.dataset.delpay;
@@ -2052,7 +2109,7 @@ function doImport(data, replace, undoable){
     lessons = Array.isArray(inc) ? inc.slice() : [];
     lib   = (data.lib  && typeof data.lib==="object")  ? data.lib  : {};
     prog  = (data.prog && typeof data.prog==="object") ? data.prog : {};
-    money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[]} : {due:{}, paid:{}, pays:[]};
+    money = data.money ? {due:data.money.due||{}, paid:data.money.paid||{}, pays:Array.isArray(data.money.pays)?data.money.pays:[], chg:Array.isArray(data.money.chg)?data.money.chg:[]} : {due:{}, paid:{}, pays:[], chg:[]};
     archived = (data.archived && typeof data.archived==="object") ? data.archived : {};
     extra = normExtra(data.extra);
     addedCount = lessons.length;
@@ -2090,6 +2147,11 @@ function doImport(data, replace, undoable){
       if(Array.isArray(data.money.pays)){
         const havePay = new Set(money.pays.map(p=>p.id));
         data.money.pays.forEach(p=>{ if(p && p.id && !havePay.has(p.id)) money.pays.push(p); });
+      }
+      if(Array.isArray(data.money.chg)){
+        if(!Array.isArray(money.chg)) money.chg = [];
+        const haveChg = new Set(money.chg.map(c=>c.id));
+        data.money.chg.forEach(c=>{ if(c && c.id && !haveChg.has(c.id)) money.chg.push(c); });
       }
     }
   }
