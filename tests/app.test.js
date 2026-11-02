@@ -906,3 +906,48 @@ test("الجامعة: قائمة الانتظار تقبل مادة باسمها
   assert.ok(d.getElementById("main").innerHTML.includes("كيمياء تحليلية"));
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== مبلغ حصص مؤرَّخ يُضاف إلى المستحق ===== */
+test("مبلغ حصص: يُضاف إلى المستحق بتاريخه، ويظهر في السجل، وحذفه يخصمه", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "نايف", date: "2026-10-20" });
+  t.setTab("pay"); w.render();
+  let card = d.querySelector(".stu-card");
+  card.querySelector("[data-due]").value = "100"; card.querySelector("[data-due]").onchange();
+  card = d.querySelector(".stu-card");
+  card.querySelector("[data-newchg]").value = "40";
+  card.querySelector("[data-newchgdate]").value = "2026-11-02";
+  card.querySelector("[data-addchg]").click();
+  assert.equal(t.money().due["نايف"], 140, "أُضيف إلى المستحق الموجود");
+  assert.equal(t.money().chg.length, 1);
+  assert.equal(t.money().chg[0].date, "2026-11-02");
+  card = d.querySelector(".stu-card");
+  card.querySelector("[data-newpay]").value = "20";
+  card.querySelector("[data-addpay]").click();
+  const rows = [...d.querySelectorAll(".stu-card .paylist > div")].map(x => x.textContent);
+  assert.equal(rows.length, 2);
+  assert.ok(rows.some(r => r.includes("حصص") && r.includes("+40.000")), "سطر مبلغ الحصص");
+  assert.ok(rows.some(r => r.includes("دفعة") && r.includes("20.000")), "سطر الدفعة");
+  assert.ok(d.querySelector(".stu-card .rest").textContent.includes("120.000"), "المتبقي = 140 − 20");
+  d.querySelector("[data-delchg]").click();
+  d.getElementById("c-ok").click();
+  assert.equal(t.money().due["نايف"], 100, "الحذف يخصم من المستحق");
+  assert.equal(t.money().chg.length, 0);
+  d.getElementById("undo-btn").click();
+  assert.equal(t.money().due["نايف"], 140, "«تراجع» يعيده");
+  assert.equal(t.money().chg.length, 1);
+  assert.deepEqual(app.errors, []);
+});
+
+test("مبلغ حصص: صفر أو فارغ لا يُسجَّل، والاستيراد بالدمج يجلب مبالغ الحصص", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "نايف", date: "2026-10-20" });
+  t.setTab("pay"); w.render();
+  d.querySelector("[data-addchg]").click();
+  assert.equal((t.money().chg || []).length, 0);
+  w.doImport({ lessons: [], money: { due: {}, paid: {}, pays: [], chg: [{ id: "cX", student: "نايف", amount: 15, date: "2026-11-01" }] } }, false);
+  assert.equal(t.money().chg.length, 1);
+  assert.deepEqual(app.errors, []);
+});
