@@ -951,3 +951,15 @@ test("مبلغ حصص: صفر أو فارغ لا يُسجَّل، والاستي
   assert.equal(t.money().chg.length, 1);
   assert.deepEqual(app.errors, []);
 });
+
+test("منع التكبير على الآيفون: الـ viewport يمنعه، والنقر المزدوج معطّل، وإيماءة التكبير تُلغى", async () => {
+  const app = await loadApp();
+  const { d, w } = app;
+  const vp = d.querySelector('meta[name="viewport"]').getAttribute("content");
+  assert.ok(vp.includes("maximum-scale=1") && vp.includes("user-scalable=no"));
+  assert.ok(/html,body\{touch-action:manipulation/.test(INDEX), "لا تكبير بالنقر المزدوج");
+  const ev = new w.Event("gesturestart", { cancelable: true });
+  d.dispatchEvent(ev);
+  assert.equal(ev.defaultPrevented, true, "إيماءة التكبير بإصبعين تُلغى");
+  assert.deepEqual(app.errors, []);
+});

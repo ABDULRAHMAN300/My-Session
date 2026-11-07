@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FBF7FF">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#150F22">
 <meta name="description" content="جدول الحصص الخارجية — المواعيد والتكرار وكشف تعارض الأوقات.">
@@ -443,6 +443,8 @@ body.rp-open{overflow:hidden}
 
 /* ===== تحسينات شاشة الجوال ===== */
 button,a,[role="checkbox"]{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* منع التكبير على الآيفون: لا تكبير بالنقر المزدوج في أي مكان، ولا تغيّر حجم الخط عند تدوير الجهاز */
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* iOS يكبّر الصفحة عند التركيز على حقل خطه أقل من 16px */
 /* iOS يكبّر الصفحة تلقائيًا عند التركيز على أي حقل خطه أقل من 16px */
 input:not([type="file"]),textarea,select{font-size:16px!important}   /* !important: بعض القواعد الأخصّ (دفعة جديدة، رمز الجهاز) كانت تصغّره إلى 13.5px فيكبّر iOS الصفحة */
@@ -3073,6 +3075,14 @@ document.getElementById("f-del").onclick = ()=>{
     run: ()=>withUndo(isReview(l) ? "حُذفت المراجعة" : "حُذفت الحصة", ()=>delLesson(id))
   });
 };
+
+/* ============ منع التكبير على الآيفون ============
+   Safari يتجاهل user-scalable=no أحيانًا، فنمنع إيماءة التكبير بإصبعين هنا. النقر المزدوج يمنعه
+   touch-action:manipulation في CSS — دون اعتراض اللمسات، كي لا تضيع النقرات السريعة (لوحة الرمز، أزرار الأسهم). */
+(function noZoom(){
+  ["gesturestart","gesturechange","gestureend"].forEach(t=>document.addEventListener(t, e=>e.preventDefault(), {passive:false}));
+  document.addEventListener("touchmove", e=>{ if(e.touches && e.touches.length > 1) e.preventDefault(); }, {passive:false});
+})();
 
 /* ============ التبويبات والوضع الليلي ============ */
 document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); window.scrollTo(0,0); });
