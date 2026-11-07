@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FBF7FF">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#150F22">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#F6F6F8">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121116">
 <meta name="description" content="جدول الحصص الخارجية — المواعيد والتكرار وكشف تعارض الأوقات.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,15 +30,15 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --violet:#7B2FF7;
-  --rose:#FF4D9D;
-  --bg:#FBF7FF;
+  --violet:#6D28D9;
+  --rose:#6D28D9;
+  --bg:#F6F6F8;
   --surface:#FFFFFF;
-  --surface-2:#F0E8FF;
-  --ink:#2A2138;
-  --ink-soft:#6E6285;
-  --line:#E4D8FA;
-  --line-soft:#F0E9FB;
+  --surface-2:#F0EFF4;
+  --ink:#1C1A22;
+  --ink-soft:#5F5B6B;
+  --line:#E2E0E8;
+  --line-soft:#EDECF1;
   --phys:#1668E3;
   --chem:#06A94D;
   --sci:#C98A00;
@@ -51,37 +51,37 @@
   --on-rev:#FFFFFF;
   --warn:#E5184C;
   --on-violet:#FFFFFF;
-  --grad:linear-gradient(135deg,#7B2FF7 0%,#B32FE0 55%,#FF4D9D 100%);
-  --shadow:0 1px 2px rgba(90,40,160,.06), 0 8px 24px rgba(90,40,160,.09);
-  --shadow-lift:0 8px 34px rgba(70,20,140,.26);
+  --grad:linear-gradient(var(--violet),var(--violet));
+  --shadow:0 1px 2px rgba(16,12,28,.05);
+  --shadow-lift:0 -6px 28px rgba(16,12,28,.12);
   --r:14px;
   --font-d:"Noto Kufi Arabic",system-ui,sans-serif;
   --font-b:"Noto Sans Arabic",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --violet:#B98BFF; --rose:#FF7DBB;
-    --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
-    --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
+    --violet:#A78BFA; --rose:#A78BFA;
+    --bg:#121116; --surface:#1A1920; --surface-2:#24222B;
+    --ink:#ECEAF2; --ink-soft:#A3A0AE; --line:#33303C; --line-soft:#29272F;
     --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
     --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC; --guni:#C4A1FF; --usubj:#F28DB5;
     --rev:#A5B4FC; --on-rev:#1B1640;
-    --warn:#FF6B8E; --on-violet:#180F2B;
-    --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
-    --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
+    --warn:#FF6B8E; --on-violet:#120F1A;
+    --grad:linear-gradient(var(--violet),var(--violet));
+    --shadow:0 1px 2px rgba(0,0,0,.3);
     --shadow-lift:0 8px 34px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"]{
-  --violet:#B98BFF; --rose:#FF7DBB;
-  --bg:#150F22; --surface:#1F1733; --surface-2:#2C2049;
-  --ink:#F1EAFF; --ink-soft:#A99BC6; --line:#3D2E60; --line-soft:#2E2350;
+  --violet:#A78BFA; --rose:#A78BFA;
+  --bg:#121116; --surface:#1A1920; --surface-2:#24222B;
+  --ink:#ECEAF2; --ink-soft:#A3A0AE; --line:#33303C; --line-soft:#29272F;
   --phys:#5FA8FF; --chem:#3EDC8A; --sci:#FFC94D;
   --g10:#FFA24D; --g11:#FF6B8E; --g12:#4FD1DC; --guni:#C4A1FF; --usubj:#F28DB5;
   --rev:#A5B4FC; --on-rev:#1B1640;
-  --warn:#FF6B8E; --on-violet:#180F2B;
-  --grad:linear-gradient(135deg,#B98BFF 0%,#D97BF0 55%,#FF7DBB 100%);
-  --shadow:0 1px 2px rgba(0,0,0,.34), 0 8px 24px rgba(0,0,0,.3);
+  --warn:#FF6B8E; --on-violet:#120F1A;
+  --grad:linear-gradient(var(--violet),var(--violet));
+  --shadow:0 1px 2px rgba(0,0,0,.3);
   --shadow-lift:0 8px 34px rgba(0,0,0,.5);
 }
 *{box-sizing:border-box}
@@ -142,7 +142,22 @@ button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
 .panel-body{padding:10px 14px 14px}
 
 .les{display:flex;gap:11px;align-items:flex-start;padding:11px 0}
-.les+.les{border-top:1px solid var(--line-soft)}
+.les+.les,.swipe+.swipe{border-top:1px solid var(--line-soft)}
+/* السحب بالإصبع على بطاقة الحصة */
+.fclash{margin:8px 0 0;padding:8px 11px;border-radius:10px;font-size:12.5px;line-height:1.6;
+  background:color-mix(in srgb,var(--warn) 9%,var(--surface));color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent)}
+.fclash b{font-family:var(--font-d);font-weight:600}
+.swipe{position:relative;overflow:hidden}
+.swipe .les{position:relative;background:var(--surface);touch-action:pan-y;transition:transform .2s ease}
+.swipe-bg{position:absolute;inset:0;display:none;align-items:center;font-family:var(--font-d);font-size:12.5px;font-weight:600}
+.swipe.go-done .swipe-bg,.swipe.go-more .swipe-bg{display:flex}
+.swipe-bg span{position:absolute;top:50%;transform:translateY(-50%);opacity:.55;transition:opacity .15s}
+.swipe-bg .sb-done{left:14px;color:var(--chem)}
+.swipe-bg .sb-more{right:14px;color:var(--warn)}
+.swipe.go-done .swipe-bg{background:color-mix(in srgb,var(--chem) 10%,var(--surface))}
+.swipe.go-more .swipe-bg{background:color-mix(in srgb,var(--warn) 9%,var(--surface))}
+.swipe.go-done .sb-more,.swipe.go-more .sb-done{display:none}
+.swipe.armed .swipe-bg span{opacity:1}
 .les .time{flex-shrink:0;width:52px;text-align:center;font-family:var(--font-d);line-height:1.35}
 .les .time b{display:block;font-size:14px;font-weight:700}
 .les .time span{display:block;font-size:10.5px;color:var(--ink-soft)}
@@ -538,6 +553,41 @@ img,svg,canvas{max-width:100%;height:auto}
 .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px;padding:12px 14px;background:var(--surface-2);border-radius:var(--r)}
 .legend span{font-size:11.5px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px}
 .legend i{width:8px;height:8px;border-radius:50%;display:block}
+
+/* ===== الواجهة الهادئة ونظيفة: سطوح محايدة، لون تمييز واحد (بنفسجي)، بلا تدرّجات ولا ظلال ثقيلة.
+   ألوان المواد والصفوف باقية لأنها معلومة (تمييز المادة/الصف)، والأحمر/الأخضر/البرتقالي للحالة فقط. */
+body{background:var(--bg)}
+.brand h1{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--ink);font-weight:700}
+.brand::before{box-shadow:none}
+.hero{background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
+.hero::before,.hero::after{display:none}
+.hero.urgent{background:var(--surface);border-color:var(--violet);box-shadow:var(--shadow)}
+.hero-top{color:var(--ink-soft);opacity:1}
+.hero-count{background:var(--surface-2);color:var(--ink-soft)}
+.hero-next span{color:var(--ink-soft);opacity:1}
+.hero.urgent .hero-next b{color:var(--violet)}
+.hero-bar{background:var(--surface-2)}
+.hero-bar i{background:var(--violet)}
+.remind{background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
+.remind b{color:var(--violet)}
+.tile::before{display:none}
+.tiles .tile .v{color:var(--ink)!important}
+.avatar{background-image:none;box-shadow:none}
+.card{background:var(--surface)}
+.stu-card{border-top:1px solid var(--line)}
+.panel{border-top:1px solid var(--line);background:var(--surface)}
+.cell.sel{box-shadow:none}
+.btn.primary{box-shadow:none}
+.tab[aria-selected="true"]{background:color-mix(in srgb,var(--violet) 10%,transparent)}
+.rp-head{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.rp-head h2{color:var(--ink)}
+.rp-head p{opacity:1;color:var(--ink-soft)}
+.rp-head::after{display:none}
+.rp-tag{background:var(--surface-2);color:var(--ink-soft)}
+.pfill{background:var(--chem)}
+.avatar{background:color-mix(in srgb,var(--ac,var(--violet)) 14%,var(--surface));color:var(--ac,var(--violet))}
+.wkh.off{color:var(--ink-soft);font-weight:600}
+.addbtn{box-shadow:none}
 </style>
 
 <div id="shell">
@@ -611,6 +661,7 @@ img,svg,canvas{max-width:100%;height:auto}
     <div class="field">
       <label for="f-from">من الساعة</label>
       <input type="time" id="f-from" value="16:00" step="300">
+      <p class="fclash" id="f-clash" role="status" hidden></p>
     </div>
     <div class="field">
       <label for="f-dur">مدة الحصة</label>
@@ -633,7 +684,7 @@ img,svg,canvas{max-width:100%;height:auto}
     <div class="sheet-actions">
       <button class="btn primary" id="f-save" type="button">حفظ</button>
       <button class="btn ghost" id="f-cancel" type="button">إلغاء</button>
-      <button class="btn ghost" id="f-move" type="button" hidden style="flex:1 1 100%">⇄ نقل إلى يوم آخر</button>
+      <button class="btn ghost" id="f-move" type="button" hidden style="flex:1 1 100%">نقل إلى يوم آخر</button>
       <button class="btn ghost" id="f-del" type="button" hidden style="flex:1 1 100%;color:var(--warn)">حذف</button>
     </div>
   </div>
@@ -1325,7 +1376,9 @@ function movedTo(l, ds){
 function lessonRow(l, clashes){
   const g = gradeOf(l.grade), sb = subjOf(l.subj);
   const isClash = clashes && clashes.has(l.id+"|"+l.date);
-  return `<div class="les${l.done?" done":""}${isReview(l)?" is-rev":""}${l._st==="c"?" cancel":""}${l._st==="p"?" post":""}">
+  /* غلاف السحب: يمينًا = منفَّذة (أو التراجع عنها)، يسارًا = إلغاء أو نقل */
+  const canMore = !l.done && !l._st;
+  return `<div class="swipe${canMore?"":" no-more"}"><div class="swipe-bg" aria-hidden="true"><span class="sb-done">${l.done?"إلغاء التنفيذ":"منفَّذة"}</span><span class="sb-more">إلغاء أو نقل</span></div><div class="les${l.done?" done":""}${isReview(l)?" is-rev":""}${l._st==="c"?" cancel":""}${l._st==="p"?" post":""}">
     <span class="time num"><b>${fmtT(l.from)}</b><span>${fmtT(l.to)}</span></span>
     <span class="bar" style="background:${sb.c}"></span>
     <span class="body">
@@ -1350,7 +1403,7 @@ function lessonRow(l, clashes){
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M13.5 6.5l4 4"/></svg>
       </button>
     </span>
-  </div>`;
+  </div></div>`;
 }
 
 /* إلغاء يوم كامل (عطلة أو مرض): كل حصة لم تُنفَّذ ولم تُعلَّم بعد تصبح «ملغاة» — تبقى ظاهرة وتُحسب في التقرير */
@@ -1385,7 +1438,7 @@ function dayPanel(ds){
     </div>
     <div class="panel-body">
       ${list.some(o=>!o.done && !o._st)?`<div class="dayacts"><button class="minibtn" type="button" data-cancelday="${ds}">إلغاء كل حصص اليوم</button></div>`:""}
-      ${clashes.size?`<div class="warnbox">⚠ يوجد موعدان متداخلان في هذا اليوم — راجع الأوقات.</div>`:""}
+      ${clashes.size?`<div class="warnbox">يوجد موعدان متداخلان في هذا اليوم — راجع الأوقات.</div>`:""}
       ${list.length?list.map(l=>lessonRow(l,clashes)).join(""):`<p class="empty">اليوم فارغ — اضغط «+ حصة» لإضافة موعد.</p>`}
     </div>
   </section>`;
@@ -1433,7 +1486,7 @@ function renderCal(){
           <button class="mini" type="button" data-add="${ds}">+ حصة</button>
         </div>
         ${list.some(o=>!o.done && !o._st)?`<div class="dayacts" style="margin:8px 0 0"><button class="minibtn" type="button" data-cancelday="${ds}">إلغاء اليوم</button></div>`:""}
-        ${clashes.size?`<div class="warnbox" style="margin-top:8px">⚠ موعدان متداخلان.</div>`:""}
+        ${clashes.size?`<div class="warnbox" style="margin-top:8px">موعدان متداخلان.</div>`:""}
         ${list.length?list.map(l=>lessonRow(l,clashes)).join(""):`<p style="font-size:12.5px;color:var(--ink-soft);margin:4px 0 0">لا حصص.</p>`}
       </div>`;
     }
@@ -1466,7 +1519,7 @@ function searchBox(){
   const na = archivedCount();
   return `<div class="field" style="margin-bottom:12px">
     <input type="text" id="q-search" placeholder="ابحث عن طالب بالاسم…" value="${esc(state.q||"")}" autocomplete="off">
-  </div>${na?`<div class="chips" style="margin-bottom:12px"><button class="chip" type="button" id="arch-toggle" aria-pressed="${state.showArch}">📦 المؤرشفون (${na})</button></div>`:""}`;
+  </div>${na?`<div class="chips" style="margin-bottom:12px"><button class="chip" type="button" id="arch-toggle" aria-pressed="${state.showArch}">المؤرشفون (${na})</button></div>`:""}`;
 }
 function wireSearch(){
   const at = document.getElementById("arch-toggle");
@@ -1495,13 +1548,13 @@ function renderStudents(){
   if(due.length) html += `<div class="card alertcard"><h3>باقات تحتاج تجديدًا</h3>
     <p>${due.map(n=>`<b>${esc(n)}</b> (${(s=>s.left===1?"متبقية حصة":s.left===0?"انتهت":"تجاوز "+(-s.left))(pkgStat(n))})`).join("، ")}</p></div>`;
   html += `<div class="chips" style="margin-bottom:12px">
-    <button class="chip" type="button" id="wait-toggle" aria-pressed="${!!state.showWait}">⏳ قائمة الانتظار (${extra.wait.length})</button>
+    <button class="chip" type="button" id="wait-toggle" aria-pressed="${!!state.showWait}">قائمة الانتظار (${extra.wait.length})</button>
     <button class="chip" type="button" id="wait-add">+ طالب منتظر</button>
   </div>`;
   if(state.showWait){
     html += wq.length ? wq.map(w=>`<div class="card">
         <div class="stu-h">
-          <span class="avatar" style="background:${gradeOf(w.grade).c}">${gradeOf(w.grade).s}</span>
+          <span class="avatar" style="--ac:${gradeOf(w.grade).c}">${gradeOf(w.grade).s}</span>
           <span class="who"><b>${esc(w.name)}</b><span>${gradeOf(w.grade).l} · ${subjOf(w.subj).l}</span></span>
         </div>
         <div class="wmeta">
@@ -1539,7 +1592,7 @@ function renderStudents(){
       const isArch = !!archived[n];
       html += `<div class="card${isArch?" archived":""}">
         <div class="stu-h">
-          <span class="avatar" style="background:${g.c}">${g.s}</span>
+          <span class="avatar" style="--ac:${g.c}">${g.s}</span>
           <span class="who"><b>${esc(n)}${isArch?`<span class="arch-badge">مؤرشف</span>`:""}</b><span>${g.l} · ${subjs}</span></span>
           <button class="iconbtn" type="button" data-arch="${esc(n)}" aria-label="${isArch?"إرجاع الطالب من الأرشيف":"أرشفة الطالب"}" title="${isArch?"إرجاع":"أرشفة"}">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7h17v4h-17z"/><path d="M5 11v8h14v-8"/><path d="M10 15h4"/></svg>
@@ -1564,7 +1617,7 @@ function renderStudents(){
       </div>`;
     });
   }
-  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}. لتصحيح اسم اضغط ✏️، ولإخفاء طالب انتهى التعامل معه اضغط 📦 (بياناته محفوظة ويمكن إرجاعه).</p>`;
+  html += `<p class="hint">النطاق المعروض: من ${longDate(winFrom())} إلى ${longDate(winTo())}. لتصحيح اسم اضغط زر القلم، ولإخفاء طالب انتهى التعامل معه اضغط زر الأرشفة (بياناته محفوظة ويمكن إرجاعه).</p>`;
   main.innerHTML = html;
   main.querySelectorAll("[data-sf]").forEach(b=>b.onclick=()=>{ state.subjFilter=b.dataset.sf; render(); });
   main.querySelectorAll("[data-arch]").forEach(b=>b.onclick=()=>{
@@ -1630,7 +1683,7 @@ function renderPay(){
     const cleared = hasDue && r <= 0.0005;
     html += `<div class="card stu-card" style="--acc:${sb.c}">
       <div class="stu-h">
-        <span class="avatar" style="background:${g.c}">${g.s}</span>
+        <span class="avatar" style="--ac:${g.c}">${g.s}</span>
         <span class="who"><b>${esc(n)}</b><span>${g.l} · ${sb.l}</span></span>
         <span class="cnt"><b class="num">${doneCount(n)}</b><span>${(()=>{const d=doneSplit(n);return d.rev?`منفَّذة · منها ${d.rev} مراجعة`:"حصة منفَّذة";})()}</span></span>
       </div>
@@ -1745,7 +1798,7 @@ function renderProg(){
     const ps = progStat(n), cov = coveredList(n);
     html += `<div class="card stu-card" style="--acc:${sb.c}">
       <div class="stu-h">
-        <span class="avatar" style="background:${g.c}">${g.s}</span>
+        <span class="avatar" style="--ac:${g.c}">${g.s}</span>
         <span class="who"><b>${esc(n)}</b><span>${g.l} · ${subs.map(x=>subjOf(x.subj).l).join(" و")}</span></span>
         <span class="cnt"><b class="num">${ps.pct}٪</b><span>من الخطة</span></span>
       </div>
@@ -1762,8 +1815,8 @@ function renderProg(){
         ${cov.length>5?`<div class="more">وقبلها ${cov.length-5} درسًا.</div>`:""}</div>`
         :`<p class="empty" style="padding:8px 4px">لم يُعلَّم أي درس بعد.</p>`}
       <div class="pay-row">
-        ${subs.map(x=>`<button class="minibtn" type="button" data-plan="${esc(n)}" data-subj="${x.subj}" data-grade="${x.grade}">📚 خطة ${subjOf(x.subj).l}</button>`).join("")}
-        <button class="minibtn solid" type="button" data-report="${esc(n)}">📄 تقرير الشهر</button>
+        ${subs.map(x=>`<button class="minibtn" type="button" data-plan="${esc(n)}" data-subj="${x.subj}" data-grade="${x.grade}">خطة ${subjOf(x.subj).l}</button>`).join("")}
+        <button class="minibtn solid" type="button" data-report="${esc(n)}">تقرير الشهر</button>
       </div>
     </div>`;
   });
@@ -1865,7 +1918,7 @@ function renderStats(){
       <button class="minibtn solid" type="button" id="cloud-restore">استرجاع</button>
     </div>
     <div class="pay-row" style="margin-top:10px">
-      <button class="minibtn" type="button" id="cloud-versions-btn">🕘 نسخ الأيام السابقة (للتراجع عن حذف خاطئ)</button>
+      <button class="minibtn" type="button" id="cloud-versions-btn">نسخ الأيام السابقة (للتراجع عن حذف خاطئ)</button>
     </div>
     <div id="cloud-versions" hidden></div>
     <p id="cloud-msg" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0"></p>
@@ -1959,7 +2012,7 @@ function paintCodeBar(){
   const need = codeSaveNeeded();
   el.hidden = !need;
   if(!need) return;
-  el.innerHTML = `<p>🔑 <b>احفظ رمز جهازك الآن.</b> هو وسيلتك الوحيدة لاسترجاع بياناتك لو حُذف التطبيق بالخطأ.</p>
+  el.innerHTML = `<p><b>احفظ رمز جهازك الآن.</b> هو وسيلتك الوحيدة لاسترجاع بياناتك لو حُذف التطبيق بالخطأ.</p>
     <button class="minibtn solid" type="button" id="codebar-share">مشاركة الرمز</button>
     <button class="minibtn" type="button" id="codebar-copy">نسخ</button>`;
   document.getElementById("codebar-share").onclick = shareDeviceCode;
@@ -2002,7 +2055,7 @@ function cloudHold(on, n){
   const el = document.getElementById("cloudbar"); if(!el) return;
   el.hidden = !on;
   if(!on) return;
-  el.innerHTML = `<p>☁️ <b>وُجدت نسخة سحابية لهذا الرمز فيها ${n} حصة،</b> وهذا الجهاز فارغ. أوقفنا الرفع حمايةً لها.</p>
+  el.innerHTML = `<p><b>وُجدت نسخة سحابية لهذا الرمز فيها ${n} حصة،</b> وهذا الجهاز فارغ. أوقفنا الرفع حمايةً لها.</p>
     <button class="minibtn solid" type="button" id="cloudbar-restore">استرجاع النسخة</button>
     <button class="minibtn" type="button" id="cloudbar-keep">ابدأ من الصفر وأستبدلها</button>`;
   document.getElementById("cloudbar-restore").onclick = ()=>cloudRestore(deviceCode());
@@ -2276,7 +2329,7 @@ function paintGlist(){
   const items = libOfKey(key), pr = progOf(student);
   const box = document.getElementById("g-list");
   if(!items.length){
-    box.innerHTML = `<p class="empty">لا دروس في مكتبة هذه المادة بعد.<br>أضفها من تبويب المتابعة ← 📚 الخطة.</p>`;
+    box.innerHTML = `<p class="empty">لا دروس في مكتبة هذه المادة بعد.<br>أضفها من تبويب المتابعة ← الخطة.</p>`;
     return;
   }
   const first = items.findIndex(x=>!pr[x.id]);
@@ -2583,7 +2636,7 @@ function paintBkBar(){
   const due = bkDue();
   el.hidden = !due;
   if(!due) return;
-  el.innerHTML = `<p>🛟 <b>خذ نسخة احتياطية.</b> ${due.days===null
+  el.innerHTML = `<p><b>خذ نسخة احتياطية.</b> ${due.days===null
       ? "لم تأخذ نسخة من قبل، والبيانات محفوظة في هذا الجهاز فقط."
       : `آخر نسخة قبل <span class="num">${due.days}</span> يومًا.`}</p>
     <button class="minibtn solid" type="button" id="bk-now">نسخة الآن</button>
@@ -2654,7 +2707,7 @@ function updateRemind(){
   el.hidden = !show;
   if(show) el.innerHTML = nx.kind==="now"
     ? `⏱ الآن: <b>${esc(nx.l.student||"بدون اسم")}</b>${kindTag(nx.l)} · تنتهي بعد ${inTxt(nx.left)}`
-    : `🔔 بعد ${inTxt(nx.left)}: <b>${esc(nx.l.student||"بدون اسم")}</b>${kindTag(nx.l)} · ${fmtT(nx.l.from)}`;
+    : `بعد ${inTxt(nx.left)}: <b>${esc(nx.l.student||"بدون اسم")}</b>${kindTag(nx.l)} · ${fmtT(nx.l.from)}`;
 }
 function tick(){
   const nowKey = key(new Date());
@@ -2781,10 +2834,34 @@ function paintOpts(){
   }
   document.getElementById("f-rep-until").hidden = draft.rep.t === "none";
   document.getElementById("f-until").value = draft.rep.until || "";
+  setTimeout(paintFormClash, 0);
   optButtons(document.getElementById("f-dur"),
     [{v:60,l:"ساعة"},{v:90,l:"ساعة ونصف"},{v:120,l:"ساعتان"}], draft.dur,
     v=>{ draft.dur=+v; paintOpts(); });
 }
+/* تنبيه التعارض في النموذج قبل الحفظ: نفس قاعدة التقويم (بدايتان بينهما أقل من ساعة)،
+   ولا تُحسب الملغاة والمؤجَّلة، ولا الموعد نفسه قيد التعديل، ولا حصة الطالب نفسه عند وضع مراجعة مكانها */
+function formClashes(){
+  const fd = document.getElementById("f-date").value, from = document.getElementById("f-from").value;
+  if(!fd || !from) return [];
+  const cur = state.editing ? lessons.find(l=>l.id===state.editing) : null;
+  const ds = (cur && isRep(cur) && state.occDate && draft.rep.t !== "none") ? state.occDate : fd;
+  const student = document.getElementById("f-student").value.trim();
+  return lessonsOn(ds).filter(o=>
+    o.id !== state.editing && o._st !== "c" && o._st !== "p" &&
+    !(draft.kind === "review" && o.student === student && !isReview(o)) &&
+    Math.abs(mins(o.from) - mins(from)) < 60);
+}
+function paintFormClash(){
+  const el = document.getElementById("f-clash"); if(!el || scrim.hidden) return;
+  const c = formClashes();
+  el.hidden = !c.length;
+  if(c.length) el.innerHTML = "يتعارض مع: " + c.map(o=>`<b>${esc(o.student||"بدون اسم")}</b> <bdi>${fmtT(o.from)}</bdi>`).join("، ");
+}
+["f-date","f-from","f-student"].forEach(id=>{
+  const el = document.getElementById(id);
+  el.addEventListener("input", paintFormClash); el.addEventListener("change", paintFormClash);
+});
 function openSheet(les, date, occDate){
   state.editing = les ? les.id : null;
   state.occDate = occDate || (les ? les.date : null);
@@ -2840,7 +2917,7 @@ function prefillFromLast(){
   document.getElementById("f-from").value = last.from || "16:00";
   paintOpts();
   const h = document.getElementById("f-hint");
-  h.textContent = "✨ عُبِّئت الحقول من آخر حصة لهذا الطالب — عدّلها إن لزم.";
+  h.textContent = "عُبِّئت الحقول من آخر حصة لهذا الطالب — عدّلها إن لزم.";
   h.hidden = false;
 }
 /* من بطاقة الطالب: مراجعة اختبار جاهزة باسمه وصفّه ومادته ووقته المعتاد (تاريخها اليوم المحدّد في التقويم) */
@@ -3076,6 +3153,65 @@ document.getElementById("f-del").onclick = ()=>{
   });
 };
 
+/* ============ السحب بالإصبع على بطاقة الحصة ============
+   يمينًا (مسافة كافية) = ضغط زر ✓، يسارًا = نافذة «ألغيت الحصة / نقل إلى يوم آخر».
+   touch-action:pan-y يترك التمرير العمودي للمتصفح، والأزرار داخل البطاقة تعمل بالنقر كالمعتاد. */
+const SWIPE_MIN = 72;
+let swp = null;
+function swipeMore(row){
+  const t = row.querySelector("[data-toggle]"); if(!t) return;
+  const [id, ds] = t.dataset.toggle.split("|");
+  const l = lessons.find(x=>x.id===id); if(!l) return;
+  const o = occOf(l, ds);
+  if(o.done || o._st) return;
+  askConfirm({
+    title:"هذا الموعد",
+    text:"اختر ما تريد لهذا الموعد فقط.",
+    what:(o.student||"بدون اسم")+" — "+longDate(ds)+" · "+fmtT(o.from),
+    ok:"ألغيت الحصة",
+    ok2:"نقل إلى يوم آخر",
+    run: ()=>withUndo("أُلغيت الحصة", ()=>{
+      const i = lessons.findIndex(x=>x.id===id); if(i<0) return;
+      const b = lessons[i];
+      lessons[i] = Object.assign({}, b, {stat:Object.assign({}, b.stat||{}, {[ds]:"c"})});
+      save(); render();
+    }),
+    run2: ()=>openMove(id, ds)
+  });
+}
+document.addEventListener("pointerdown", e=>{
+  const row = e.target.closest && e.target.closest(".swipe > .les");
+  if(!row || e.target.closest("button,a,input")) return;
+  swp = {row, wrap:row.parentElement, x:e.clientX, y:e.clientY, dx:0, on:false, id:e.pointerId};
+});
+document.addEventListener("pointermove", e=>{
+  if(!swp || e.pointerId!==swp.id) return;
+  const dx = e.clientX - swp.x, dy = e.clientY - swp.y;
+  if(!swp.on){
+    if(Math.abs(dx) < 10) return;
+    if(Math.abs(dy) > Math.abs(dx)){ swp = null; return; }
+    swp.on = true; swp.row.style.transition = "none";
+  }
+  const max = swp.wrap.classList.contains("no-more") ? 0 : 140;
+  swp.dx = Math.max(-max, Math.min(140, dx));
+  swp.row.style.transform = `translateX(${swp.dx}px)`;
+  swp.wrap.classList.toggle("go-done", swp.dx > 0);
+  swp.wrap.classList.toggle("go-more", swp.dx < 0);
+  swp.wrap.classList.toggle("armed", Math.abs(swp.dx) >= SWIPE_MIN);
+});
+function swipeEnd(e){
+  if(!swp || e.pointerId!==swp.id) return;
+  const s = swp; swp = null;
+  if(!s.on) return;
+  s.row.style.transition = ""; s.row.style.transform = "";
+  s.wrap.classList.remove("go-done","go-more","armed");
+  if(e.type === "pointercancel") return;
+  if(s.dx >= SWIPE_MIN){ const c = s.row.querySelector("[data-toggle]"); if(c) c.click(); }
+  else if(s.dx <= -SWIPE_MIN) swipeMore(s.row);
+}
+document.addEventListener("pointerup", swipeEnd);
+document.addEventListener("pointercancel", swipeEnd);
+
 /* ============ منع التكبير على الآيفون ============
    Safari يتجاهل user-scalable=no أحيانًا، فنمنع إيماءة التكبير بإصبعين هنا. النقر المزدوج يمنعه
    touch-action:manipulation في CSS — دون اعتراض اللمسات، كي لا تضيع النقرات السريعة (لوحة الرمز، أزرار الأسهم). */
@@ -3223,7 +3359,7 @@ function showUpdateBar(){
   const el = document.getElementById("updatebar");
   if(!el) return;
   el.hidden = false;
-  el.innerHTML = `<p>🔄 <b>يوجد تحديث جديد للتطبيق.</b></p>
+  el.innerHTML = `<p><b>يوجد تحديث جديد للتطبيق.</b></p>
     <button class="minibtn solid" type="button" id="upd-now">تحديث الآن</button>`;
   document.getElementById("upd-now").onclick = ()=>location.reload();
 }
