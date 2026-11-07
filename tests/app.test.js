@@ -963,3 +963,96 @@ test("منع التكبير على الآيفون: الـ viewport يمنعه، 
   assert.equal(ev.defaultPrevented, true, "إيماءة التكبير بإصبعين تُلغى");
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== السحب بالإصبع على بطاقة الحصة ===== */
+function swipe(app, row, dx) {
+  const { w } = app;
+  const fire = (type, x, y) => {
+    const e = new w.Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperties(e, { clientX: { value: x }, clientY: { value: y }, pointerId: { value: 1 } });
+    (type === "pointerdown" ? row : w.document).dispatchEvent(e);
+  };
+  fire("pointerdown", 200, 100);
+  fire("pointermove", 200 + dx / 2, 101);
+  fire("pointermove", 200 + dx, 102);
+  fire("pointerup", 200 + dx, 102);
+}
+const sleepT = (ms) => new Promise(r => setTimeout(r, ms));
+
+test("السحب يمينًا يعلّم الحصة منفَّذة، والسحب القصير لا يفعل شيئًا", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  addLesson(app, { student: "سالم", date: t.today(), from: "16:00" });
+  swipe(app, d.querySelector(".swipe > .les"), 30);
+  assert.equal(t.lessons()[0].done, false, "سحب قصير");
+  swipe(app, d.querySelector(".swipe > .les"), 110);
+  assert.equal(t.lessons()[0].done, true, "سحب كافٍ يمينًا");
+  assert.deepEqual(app.errors, []);
+});
+
+test("السحب يسارًا يعرض «ألغيت الحصة / نقل»: الإلغاء يخص هذا الموعد ويُتراجع عنه، والنقل يفتح نافذة النقل", async () => {
+  const app = await loadApp();
+  const { d, t } = app;
+  const today = t.today();
+  addLesson(app, { student: "سالم", date: today, from: "16:00" });
+  swipe(app, d.querySelector(".swipe > .les"), -110);
+  assert.equal(d.getElementById("cscrim").hidden, false);
+  assert.equal(d.getElementById("c-ok").textContent, "ألغيت الحصة");
+  d.getElementById("c-ok").click();
+  assert.equal(t.lessons()[0].stat[today], "c");
+  d.getElementById("undo-btn").click();
+  assert.ok(!(t.lessons()[0].stat || {})[today], "التراجع");
+  swipe(app, d.querySelector(".swipe > .les"), -110);
+  d.getElementById("c-ok2").click();
+  assert.equal(d.getElementById("sheettitle").textContent, "نقل الحصة إلى يوم آخر");
+  d.getElementById("f-cancel").click();
+  assert.deepEqual(app.errors, []);
+});
+
+test("السحب يسارًا لا يعمل على حصة منفَّذة أو ملغاة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "سالم", date: t.today(), from: "16:00" });
+  const ls = t.lessons(); ls[0] = Object.assign({}, ls[0], { done: true }); w.bumpMemo(); w.render();
+  assert.ok(d.querySelector(".swipe").classList.contains("no-more"));
+  swipe(app, d.querySelector(".swipe > .les"), -110);
+  assert.equal(d.getElementById("cscrim").hidden, true);
+  assert.deepEqual(app.errors, []);
+});
+
+/* ===== تنبيه التعارض في النموذج قبل الحفظ ===== */
+test("تنبيه التعارض يظهر أثناء اختيار الوقت ويختفي عند تغييره، ولا يحسب الملغاة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  const today = t.today();
+  addLesson(app, { student: "نايف", date: today, from: "16:00" });
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-student").value = "سالم";
+  d.getElementById("f-date").value = today;
+  const f = d.getElementById("f-from");
+  f.value = "16:30"; f.dispatchEvent(new w.Event("input"));
+  const el = d.getElementById("f-clash");
+  assert.equal(el.hidden, false);
+  assert.ok(el.textContent.includes("نايف"));
+  f.value = "17:00"; f.dispatchEvent(new w.Event("input"));
+  assert.equal(el.hidden, true, "ساعة كاملة بين البدايتين = لا تعارض");
+  d.getElementById("f-cancel").click();
+  const ls = t.lessons(); ls[0] = Object.assign({}, ls[0], { stat: { [today]: "c" } }); w.bumpMemo(); w.render();
+  d.querySelector("[data-add]").click();
+  d.getElementById("f-date").value = today;
+  f.value = "16:00"; f.dispatchEvent(new w.Event("input"));
+  assert.equal(el.hidden, true, "الملغاة لا تُعارض");
+  d.getElementById("f-cancel").click();
+  assert.deepEqual(app.errors, []);
+});
+
+test("تنبيه التعارض: تعديل الحصة نفسها لا يعارض نفسه", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "نايف", date: t.today(), from: "16:00" });
+  d.querySelector("[data-edit]").click();
+  await sleepT(10);
+  assert.equal(d.getElementById("f-clash").hidden, true);
+  d.getElementById("f-cancel").click();
+  assert.deepEqual(app.errors, []);
+});
