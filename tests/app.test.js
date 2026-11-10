@@ -1056,3 +1056,62 @@ test("تنبيه التعارض: تعديل الحصة نفسها لا يعار�
   d.getElementById("f-cancel").click();
   assert.deepEqual(app.errors, []);
 });
+
+/* ===== ملخص الدخل الشهري (مطوي، يُفتح بالضغط) ===== */
+test("ملخص الدخل الشهري: يجمع الدفعات والمبالغ حسب الشهر، والتفاصيل مطوية وتُفتح بالضغط وتبقى مفتوحة بعد إعادة الرسم", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "نايف", date: "2026-10-20" });
+  addLesson(app, { student: "محمد", date: "2026-10-21", from: "19:00" });
+  const m = t.money();
+  m.pays.push({ id: "p1", student: "نايف", amount: 100, date: "2026-10-05" }, { id: "p2", student: "محمد", amount: 50, date: "2026-10-20" }, { id: "p3", student: "نايف", amount: 170, date: "2026-11-02" });
+  m.chg = [{ id: "c1", student: "نايف", amount: 40, date: "2026-11-01" }];
+  t.setTab("pay"); w.render();
+  assert.equal(plain(w.incomeByMonth().map(x => [x.ym, x.paid, x.chg])).join("|"), "2026-11,170,40|2026-10,150,0");
+  const rows = [...d.querySelectorAll(".inc-row")];
+  assert.equal(rows.length, 2);
+  assert.ok(rows[0].textContent.includes("نوفمبر 2026") && rows[0].textContent.includes("170.000"), "الأحدث أولًا");
+  const det = rows[0].nextElementSibling;
+  assert.equal(det.hidden, true, "التفاصيل مطوية افتراضيًا");
+  assert.equal(rows[0].getAttribute("aria-expanded"), "false");
+  rows[0].click();
+  assert.equal(det.hidden, false, "تُفتح بالضغط");
+  assert.equal(rows[0].getAttribute("aria-expanded"), "true");
+  assert.ok(det.textContent.includes("أعلى من أكتوبر 2026") && det.textContent.includes("20.000"), "مقارنة بالشهر السابق");
+  assert.ok(det.textContent.includes("نايف") && det.textContent.includes("40.000"), "تفصيل حسب الطالب");
+  w.render();
+  assert.equal(d.querySelector(".inc-row").nextElementSibling.hidden, false, "يبقى مفتوحًا بعد إعادة الرسم");
+  d.querySelector(".inc-row").click();
+  assert.equal(d.querySelector(".inc-row").nextElementSibling.hidden, true, "يُطوى بضغطة ثانية");
+  assert.deepEqual(app.errors, []);
+});
+
+test("ملخص الدخل الشهري: لا يظهر بلا سجلات مؤرَّخة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "نايف", date: "2026-10-20" });
+  t.setTab("pay"); w.render();
+  assert.equal(d.querySelector(".inc"), null);
+  assert.deepEqual(app.errors, []);
+});
+
+test("سجل الدفعات والمبالغ في بطاقة الطالب: مطوي افتراضيًا، يُفتح بالضغط، ويُفتح تلقائيًا بعد تسجيل دفعة", async () => {
+  const app = await loadApp();
+  const { d, t, w } = app;
+  addLesson(app, { student: "نايف", date: "2026-10-20" });
+  t.money().pays.push({ id: "p1", student: "نايف", amount: 100, date: "2026-10-05" });
+  t.setTab("pay"); w.render();
+  const btn = d.querySelector("[data-led]"), list = d.querySelector(".stu-card .paylist");
+  assert.ok(btn.textContent.includes("1"), "عدد السجلات ظاهر");
+  assert.equal(list.hidden, true, "مطوي افتراضيًا");
+  btn.click();
+  assert.equal(list.hidden, false);
+  btn.click();
+  assert.equal(list.hidden, true);
+  const card = d.querySelector(".stu-card");
+  card.querySelector("[data-newpay]").value = "20";
+  card.querySelector("[data-addpay]").click();
+  assert.equal(d.querySelector(".stu-card .paylist").hidden, false, "يُفتح بعد تسجيل دفعة");
+  assert.equal(d.querySelectorAll(".stu-card .paylist > div").length, 2);
+  assert.deepEqual(app.errors, []);
+});
