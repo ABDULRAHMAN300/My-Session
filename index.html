@@ -554,6 +554,38 @@ img,svg,canvas{max-width:100%;height:auto}
 .legend span{font-size:11.5px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px}
 .legend i{width:8px;height:8px;border-radius:50%;display:block}
 
+/* سجل الدفعات والمبالغ في بطاقة الطالب: مطوي ويُفتح بالضغط */
+.led-row{width:100%;display:flex;align-items:center;gap:8px;border:0;border-top:1px solid var(--line-soft);background:transparent;
+  margin-top:10px;padding:10px 0 4px;min-height:44px;text-align:start;font-family:var(--font-d);font-size:12.5px;color:var(--ink-soft)}
+.led-row span{flex:1}
+.led-row small{background:var(--surface-2);border-radius:999px;padding:1px 9px;font-size:11.5px;color:var(--ink)}
+.led-row[aria-expanded="true"] .chev{transform:rotate(-135deg);margin-bottom:-2px}
+.led-row + .paylist{margin-top:0;border-top:0;padding-top:2px}
+/* ملخص الدخل الشهري: صفوف مطوية تُفتح بالضغط */
+.inc h3 small{font-weight:400;color:var(--ink-soft);font-size:11.5px}
+.inc-item{border-top:1px solid var(--line-soft)}
+.inc h3 + .inc-item{border-top:0;margin-top:6px}
+.inc-row{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:11px 0;min-height:48px;text-align:start}
+.inc-m{flex:1;font-family:var(--font-d);font-weight:600;font-size:14px}
+.inc-v{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3}
+.inc-v b{font-family:var(--font-d);font-size:15px}
+.inc-v small{font-size:10.5px;color:var(--ink-soft)}
+.chev{flex-shrink:0;width:8px;height:8px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);margin:0 4px 4px;transition:transform .2s}
+.inc-row[aria-expanded="true"] .chev{transform:rotate(-135deg);margin-bottom:-2px}
+.inc-d{padding:2px 0 12px}
+.inc-d > div:not(.inc-stu){display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px}
+.inc-d > div b{font-family:var(--font-d)}
+.inc-cmp{margin:6px 0 0;font-size:12.5px;color:var(--ink-soft)}
+.inc-cmp b{color:var(--ink);font-family:var(--font-d)}
+.inc-stu{margin-top:10px;background:var(--surface-2);border-radius:10px;padding:6px 10px}
+.inc-stu > div{display:grid;grid-template-columns:minmax(0,1fr) 76px 76px;gap:8px;padding:5px 0;font-size:12.5px;align-items:center}
+.inc-stu > div + div{border-top:1px solid var(--line-soft)}
+.inc-stu span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inc-stu b{text-align:end;font-family:var(--font-d);font-weight:600}
+.inc-sh{color:var(--ink-soft);font-size:11px!important}
+.inc-sh span:not(:first-child){text-align:end}
+@media (prefers-reduced-motion:reduce){.chev{transition:none}}
+
 /* ===== الواجهة الهادئة ونظيفة: سطوح محايدة، لون تمييز واحد (بنفسجي)، بلا تدرّجات ولا ظلال ثقيلة.
    ألوان المواد والصفوف باقية لأنها معلومة (تمييز المادة/الصف)، والأحمر/الأخضر/البرتقالي للحالة فقط. */
 body{background:var(--bg)}
@@ -1316,7 +1348,7 @@ const state = {
   tab:"cal", mode:"month",
   cur:{y:new Date().getFullYear(), m:new Date().getMonth()},
   sel:TODAY, editing:null, occDate:null, moveFrom:null,
-  stuFilter:"all", subjFilter:"all", q:"", showArch:false
+  stuFilter:"all", subjFilter:"all", q:"", showArch:false, incOpen:new Set(), incAll:false, ledOpen:new Set()
 };
 
 /* ============ الرسم ============ */
@@ -1646,6 +1678,62 @@ function renderStudents(){
   wire();
 }
 
+/* ملخص الدخل الشهري: من السجلات المؤرَّخة فقط — الدفعات (المحصَّل)، ومبالغ الحصص، ومراجعات الاختبار «بمبلغ» المنفَّذة.
+   التعديل اليدوي لخانتي المستحق والمدفوع بلا تاريخ فلا يدخل هنا. */
+function incomeByMonth(){
+  const m = {};
+  const at = (ds, n) => {
+    const k = String(ds||"").slice(0,7); if(k.length !== 7) return null;
+    const o = m[k] || (m[k] = {ym:k, paid:0, chg:0, fee:0, stu:{}});
+    return {o, s: o.stu[n] || (o.stu[n] = {paid:0, add:0})};
+  };
+  money.pays.forEach(p=>{ const r = at(p.date, p.student); if(r){ const a = Number(p.amount)||0; r.o.paid += a; r.s.paid += a; } });
+  (money.chg||[]).forEach(c=>{ const r = at(c.date, c.student); if(r){ const a = Number(c.amount)||0; r.o.chg += a; r.s.add += a; } });
+  doneUpToToday().filter(isFeeRev).forEach(l=>{ const r = at(l.date, l.student||"بدون اسم"); if(r){ const a = Number(l.fee)||0; r.o.fee += a; r.s.add += a; } });
+  return Object.values(m).sort((a,b)=>b.ym.localeCompare(a.ym));
+}
+const ymLabel = k => MONTHS[Number(k.slice(5,7))-1] + " " + k.slice(0,4);
+const prevYm = k => { const y = Number(k.slice(0,4)), mo = Number(k.slice(5,7)); return mo===1 ? (y-1)+"-12" : y+"-"+pad(mo-1); };
+const INC_SHOWN = 6;
+function incomeCard(){
+  const all = incomeByMonth();
+  if(!all.length) return "";
+  const byYm = {}; all.forEach(x=>byYm[x.ym] = x);
+  const list = state.incAll ? all : all.slice(0, INC_SHOWN);
+  const rows = list.map(x=>{
+    const open = state.incOpen.has(x.ym);
+    const prev = byYm[prevYm(x.ym)], pPaid = prev ? prev.paid : 0, diff = x.paid - pPaid;
+    const added = x.chg + x.fee;
+    const cmp = Math.abs(diff) < 0.0005
+      ? `مساوٍ لشهر ${ymLabel(prevYm(x.ym))}`
+      : `${diff>0?"أعلى من":"أقل من"} ${ymLabel(prevYm(x.ym))} بمقدار <b class="num">${kd(Math.abs(diff))}</b>`;
+    const stu = Object.keys(x.stu).sort((a,b)=>x.stu[b].paid - x.stu[a].paid || a.localeCompare(b,"ar"));
+    return `<div class="inc-item">
+      <button class="inc-row" type="button" data-inc="${x.ym}" aria-expanded="${open}">
+        <span class="inc-m">${ymLabel(x.ym)}</span>
+        <span class="inc-v"><b class="num">${kd(x.paid)}</b><small>محصَّل</small></span>
+        <i class="chev" aria-hidden="true"></i>
+      </button>
+      <div class="inc-d" ${open?"":"hidden"}>
+        <div><span>المحصَّل (الدفعات)</span><b class="num">${kd(x.paid)}</b></div>
+        <div><span>مبالغ الحصص المضافة</span><b class="num">${kd(x.chg)}</b></div>
+        ${x.fee>0?`<div><span>مراجعات اختبار بمبلغ</span><b class="num">${kd(x.fee)}</b></div>`:""}
+        <div><span>الفرق (المضاف − المحصَّل)</span><b class="num" style="color:${added-x.paid>0.0005?"var(--warn)":"var(--chem)"}">${kd(added - x.paid)}</b></div>
+        <p class="inc-cmp">المحصَّل ${cmp}.</p>
+        <div class="inc-stu">
+          <div class="inc-sh"><span>الطالب</span><span>محصَّل</span><span>مضاف</span></div>
+          ${stu.map(n=>`<div><span>${esc(n)}</span><b class="num">${kd(x.stu[n].paid)}</b><b class="num">${kd(x.stu[n].add)}</b></div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+  return `<section class="card inc"><h3>ملخص الدخل الشهري <small>(د.ك)</small></h3>
+    ${rows}
+    ${all.length > INC_SHOWN ? `<button class="minibtn" type="button" id="inc-all" style="margin-top:10px">${state.incAll?"إخفاء الأشهر الأقدم":`عرض الأشهر الأقدم (${all.length-INC_SHOWN})`}</button>`:""}
+    <p class="hint" style="margin-top:10px;text-align:start">اضغط على الشهر لعرض تفاصيله. يُحسب من الدفعات ومبالغ الحصص المسجَّلة بتواريخها؛ تعديل خانتي المستحق والمدفوع يدويًا لا يدخل هنا.</p>
+  </section>`;
+}
+
 /* ---------- تبويب الحسابات ---------- */
 function renderPay(){
   const names = allStudents();
@@ -1665,7 +1753,7 @@ function renderPay(){
     <div class="tile"><div class="v num" style="font-size:20px">${kd(tPaid)}</div><div class="k">إجمالي المدفوع</div></div>
     <div class="tile"><div class="v num" style="font-size:20px;color:${rest>0.0005?"var(--warn)":"var(--chem)"}">${kd(rest)}</div><div class="k">إجمالي المتبقي</div></div>
     <div class="tile"><div class="v num">${owing}</div><div class="k">طلاب عليهم مبالغ</div></div>
-  </div>`;
+  </div>` + incomeCard();
 
   html = searchBox() + html;
 
@@ -1704,7 +1792,10 @@ function renderPay(){
         <input type="date" data-newchgdate value="${TODAY}">
         <button class="minibtn" type="button" data-addchg="${esc(n)}">+ أضف للمستحق</button>
       </div>
-      ${ledgerOf(n).length?`<div class="paylist">
+      ${ledgerOf(n).length?`<button class="led-row" type="button" data-led="${esc(n)}" aria-expanded="${state.ledOpen.has(n)}">
+        <span>سجل الدفعات والمبالغ</span><small class="num">${ledgerOf(n).length}</small><i class="chev" aria-hidden="true"></i>
+      </button>
+      <div class="paylist" ${state.ledOpen.has(n)?"":"hidden"}>
         ${ledgerOf(n).map(x=>x.t==="p"
           ? `<div><span class="num">${shortDate(x.date)}</span><span class="lg lg-p">دفعة</span><b>${kd(x.amount)} د.ك</b><button class="x" type="button" data-delpay="${x.id}" aria-label="حذف الدفعة">×</button></div>`
           : `<div><span class="num">${shortDate(x.date)}</span><span class="lg lg-c">حصص</span><b>+${kd(x.amount)} د.ك</b><button class="x" type="button" data-delchg="${x.id}" aria-label="حذف مبلغ الحصص">×</button></div>`).join("")}
@@ -1732,8 +1823,24 @@ function renderPay(){
     const dateEl = card.querySelector("[data-newpaydate]");
     const amt = Number(amtEl.value);
     if(!(amt>0)){ amtEl.focus(); return; }
+    state.ledOpen.add(n);
     addPayment(n, amt, dateEl.value || TODAY);
   });
+  /* طيّ/فتح تفاصيل الشهر في موضعها (بلا إعادة رسم)، مع تذكّر المفتوح عند أي رسم لاحق */
+  main.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{
+    const k = b.dataset.inc, open = !state.incOpen.has(k);
+    if(open) state.incOpen.add(k); else state.incOpen.delete(k);
+    b.setAttribute("aria-expanded", open);
+    b.nextElementSibling.hidden = !open;
+  });
+  main.querySelectorAll("[data-led]").forEach(b=>b.onclick=()=>{
+    const k = b.dataset.led, open = !state.ledOpen.has(k);
+    if(open) state.ledOpen.add(k); else state.ledOpen.delete(k);
+    b.setAttribute("aria-expanded", open);
+    b.nextElementSibling.hidden = !open;
+  });
+  const incAllBtn = document.getElementById("inc-all");
+  if(incAllBtn) incAllBtn.onclick = ()=>{ state.incAll = !state.incAll; render(); };
   main.querySelectorAll("[data-addchg]").forEach(b=>b.onclick=()=>{
     const n = b.dataset.addchg;
     const card = b.closest(".stu-card");
@@ -1741,6 +1848,7 @@ function renderPay(){
     const dateEl = card.querySelector("[data-newchgdate]");
     const amt = Number(amtEl.value);
     if(!(amt>0)){ amtEl.focus(); return; }
+    state.ledOpen.add(n);                       // يُفتح السجل ليظهر ما أُضيف للتوّ
     addCharge(n, amt, dateEl.value || TODAY);
   });
   main.querySelectorAll("[data-delchg]").forEach(b=>b.onclick=()=>{
